@@ -6,6 +6,5 @@
 #define SHMKEY_H
 
 #define SHMKEY 305000
-//3566072
 
 #endif

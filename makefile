@@ -6,9 +6,9 @@ USER_PROG     = userProgram
 USER_PROG_OBJ = userProgram.o $(SHARED_O)
 USER_PROG_H   = $(SHARED_H)
 
-SHARED_H  = clock.h perrorExit.h randomGen.h sharedMemory.h \
-	    constants.h pcb.h shmkey.h
 SHARED_O  = clock.o perrorExit.o randomGen.o sharedMemory.o
+SHARED_H  = clock.h perrorExit.h randomGen.h sharedMemory.h \
+	    constants.h pcb.h
 
 OUTPUT     = $(OSS) $(USER_PROG)
 OUTPUT_OBJ = $(OSS_OBJ) $(USER_PROG_OBJ)

@@ -17,19 +17,26 @@
 #define REAL_TIME_PROBABILITY 0.05	// Probability new process is real time
 
 #define BASE_QUANTUM 10000000		// Base time quantum in nanoseconds
+#define QUANTUM_FACTOR 2		// Divisor of base quantum per level
 #define NUM_QUEUE_LEVELS 4		// Number of levels in multi-level queue
 
-#define MAX_TOTAL_PROCESSES 20		// Max number of processes in the system
-#define MAX_USER_PROCESSES MAX_TOTAL_PROCESSES - 2	// Max children of oss
+#define MAX_SIMULTANEOUS_PROCESSES 20	// Max number of processes in the system
+#define MAX_SIMULTANEOUS_USER_PROCESSES MAX_SIMULTANEOUS_PROCESSES - 2
+#define MAX_TOTAL_USER_PROCESSES 100	// Max children launched by oss
+#define MAX_REAL_LIFE_SECONDS 3		// Max total execution time of oss
 
 
 // Used by userProgram.c
 #define SCHED_TERM_PROBABILITY 0.2	// Chance of terminating within quantum
+#define BLOCK_PROBABILITY 0.1		// Chance of blocking within quantum
+
+
+// Used by both
+#define MESSAGE_QUEUE_NAME "/mq"	// The name of the message queue
 
 
 // Used by miscelaneous functions
 #define BILLION 1000000000U		// The number of nanoseconds in a second
-
 #define BUFF_SZ 100			// The size of character buffers 
 
 #endif
