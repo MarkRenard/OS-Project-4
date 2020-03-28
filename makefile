@@ -1,16 +1,17 @@
 OSS        = oss
-OSS_OBJ    = oss.o $(SHARED_O)
-OSS_H      = $(SHARED_H)
+OSS_OBJ    = oss.o $(COMMON_O)
+OSS_H      = $(COMMON_H)
 
 USER_PROG     = userProgram
-USER_PROG_OBJ = userProgram.o $(SHARED_O)
-USER_PROG_H   = $(SHARED_H)
+USER_PROG_OBJ = userProgram.o $(COMMON_O)
+USER_PROG_H   = $(COMMON_H)
 
-SHARED_O  = clock.o perrorExit.o randomGen.o sharedMemory.o
-SHARED_H  = clock.h perrorExit.h randomGen.h sharedMemory.h \
-	    constants.h pcb.h
+COMMON_O  = clock.o perrorExit.o randomGen.o sharedMemory.o \
+	    getSharedMemoryPointers.o
+COMMON_H  = clock.h perrorExit.h randomGen.h sharedMemory.h \
+	    getSharedMemoryPointers.h constants.h pcb.h
 
-OUTPUT     = $(OSS) $(USER_PROG)
+OUTPUT     = $(OSS) $(USER_PROG) 
 OUTPUT_OBJ = $(OSS_OBJ) $(USER_PROG_OBJ)
 CC         = gcc
 FLAGS      = -Wall -g -lm
@@ -18,7 +19,7 @@ FLAGS      = -Wall -g -lm
 
 .SUFFIXES: .c .o
 
-all: $(OSS)
+all: $(OUTPUT)
 
 $(OSS): $(OSS_OBJ) $(OSS_H)
 	$(CC) $(FLAGS) -o $@ $(OSS_OBJ)

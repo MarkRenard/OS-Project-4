@@ -20,10 +20,17 @@ Clock randomTime(const Clock min, const Clock max){
 	Clock rTime; // The random time to be returned
 
 	// Sets the number of seconds
-	rTime.seconds = randUnsigned(min.seconds, max.seconds);
+	rTime.seconds = min.seconds == max.seconds ? \
+		min.seconds : randUnsigned(min.seconds, max.seconds);
+
+	// Sets nanoseconds in the case where min and max seconds is equal
+	if (min.seconds == max.seconds){
+		rTime.nanoseconds = randUnsigned(
+					min.nanoseconds, max.nanoseconds
+				    );
 
 	// Sets nanoseconds if the minimum number of seconds was selected
-	if (rTime.seconds == min.seconds){
+	} else if (rTime.seconds == min.seconds){
 		rTime.nanoseconds = randUnsigned(min.nanoseconds, BILLION - 1);
 
 	// Sets nanoseconds if the maximum number of seconds was selected
@@ -82,9 +89,6 @@ void printTime(FILE * fp, const Clock clock){
 
 // Formats and prints the time on the clock to the file and a new line char
 void printTimeln(FILE * fp, const Clock clock){
-	fprintf(fp,
-		"%03d : %09d\n",
-		clock.seconds,
-		clock.nanoseconds
-	);
+	printTime(fp, clock);
+	fprintf(fp, "\n");
 }
