@@ -24,6 +24,7 @@
 static void launchUserProcesses(Clock *, ProcessControlBlock *);
 static void initializeBitVector(unsigned int *);
 static void generateProcess(ProcessControlBlock*, unsigned int*, Queue*, FILE*);
+static void launchProcess(int simPid);
 static void dispatchProcess(Queue *, FILE *);
 static Message waitForMessage();
 static void processMessage(Message, Queue *, FILE *);
@@ -74,7 +75,7 @@ static void launchUserProcesses(Clock * systemClock,
 	FILE * log;		 // Log of oss activity	
 	Queue q;		 // Queue of process control blocks
 
-	q.count = 0;
+	initializeQueue(&q);
 
 	// Initializes vector used to track 
 	unsigned int bitVector[BIT_VECTOR_SIZE];
@@ -91,7 +92,9 @@ static void launchUserProcesses(Clock * systemClock,
 	timeToGenerate = randomTime(minTimeBetweenNewProcs, 
 				    maxTimeBetweenNewProcs);
 
+#ifdef DEBUG
 	int i = 0;
+#endif
 	// Generates and schedules user processes in a loop
 	do {
 		// Generates new process if time reached and block is available
@@ -102,14 +105,17 @@ static void launchUserProcesses(Clock * systemClock,
 			// Generates new process, logs action, updates counter
 			generateProcess(processTable, bitVector, &q, log);	
 			totalGenerated++;
+#ifdef DEBUG
 			fprintf(stderr, "\tTotal generated: %d\n", totalGenerated);
-
+#endif
 			// Sets new random time to launch a new process
 			incrementClock(&timeToGenerate, 
 				       randomTime(minTimeBetweenNewProcs,
 						  maxTimeBetweenNewProcs));
+#ifdef DEBUG
 			fprintf(stderr, "\ttimeToGenerate: ");
 			printTimeln(stderr, timeToGenerate);
+#endif
 		}
 
 		// Schedules/dispatches a process from queue, if non-empty
@@ -123,8 +129,10 @@ static void launchUserProcesses(Clock * systemClock,
 			// Dispatches a process from the queue
 			dispatchProcess(&q, log);
 
+#ifdef DEBUG
 			fprintf(stderr, "\tTime after scheduling: ");
 			printTimeln(stderr, *systemClock);
+#endif
 
 			// Waits for message from dispatched process
 			msg = waitForMessage();
@@ -137,13 +145,15 @@ static void launchUserProcesses(Clock * systemClock,
 		Clock rand = randomTime(MIN_LOOP_INCREMENT,
 				        MAX_LOOP_INCREMENT);
 		incrementClock(systemClock, rand);
-		
+
+#ifdef DEBUG		
 		fprintf(stderr, "Time after iteration %d: ", i++);
 		printTimeln(stderr, *systemClock);
 		fprintf(stderr, "\n\n");
-		
+#endif	
 	// Continues until max user processes generated and queue is empty
-	} while ((totalGenerated < MAX_TOTAL_USER_PROCS || q.count > 0) && i < 150);
+	} while ( (totalGenerated < MAX_TOTAL_USER_PROCS || q.count > 0) 
+		   && q.count < MAX_SIMUL_USER_PROCS);
 
 }
 
@@ -156,17 +166,47 @@ static void initializeBitVector(unsigned int * bitVector){
 
 
 static void generateProcess(ProcessControlBlock * processTable, 
-			    unsigned int * bitVector, Queue * q, FILE * log){
+			    unsigned int * bitVector, Queue * queue, FILE * log){
+#ifdef DEBUG
 	static int num = 1;
-	printf("generateProcess call number %d - q size: %d\n", num++, q->count++);
+	printf("generateProcess call number %d - q size: %d\n", num++, \
+		++(queue->count));
 	fflush(stdout);
+#endif
+
+	static int bitVectorStandIn = 0;
+
+	int newPid = bitVectorStandIn++;
+	processTable[newPid] = initialProcessControlBlock();
+
+	enqueue(&processTable[newPid], queue);
+
+	launchProcess(newPid);	
+
+	processTable[newPid].state = READY;	
 
 }
 
+static void launchProcess(int simPid){
+	int realPid;
+
+	if ((realPid = fork()) == -1) perrorExit("Failed to fork");
+
+	if (realPid == 0){
+		char sPid[BUFF_SZ];
+		sprintf(sPid, "%d", simPid);
+
+		execl(USER_PROG_PATH, USER_PROG_PATH, sPid, NULL);
+		perrorExit("Failed to exec user program!");
+	}
+}
+
 static void dispatchProcess(Queue * q, FILE * log){
+#ifdef DEBUG
 	static int num = 1;
-	printf("dispatchProcess call number %d - q size: %d\n", num++, q->count--);
+	printf("dispatchProcess call number %d - q size: %d\n", num++, --(q->count));
 	fflush(stdout);
+#endif
 }	
 
 static Message waitForMessage(){
@@ -179,9 +219,11 @@ static Message waitForMessage(){
 }
 
 static void processMessage(Message msg, Queue * q, FILE * log){
+#ifdef DEBUG
 	static int num = 0;
 	printf("processMessage call number %d - q size: %d\n", num++, q->count);
 	fflush(stdout);
+#endif
 }
 
 // Determines the processes response to ctrl + c or alarm

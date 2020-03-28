@@ -6,6 +6,9 @@
 #ifndef GETSHAREDMEMORYPOINTERS_H
 #define GETSHAREDMEMORYPOINTERS_H
 
+#include "pcb.h"
+#include "clock.h"
+
 void getSharedMemoryPointers(char ** shm,  Clock ** systemClock,
                              ProcessControlBlock ** processTable, int flags);
 

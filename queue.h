@@ -12,7 +12,7 @@ typedef struct Queue {
 	int count;
 } Queue;
 
-void initialize(Queue *);
+void initializeQueue(Queue *);
 void enqueue(ProcessControlBlock *, Queue *);
 ProcessControlBlock * dequeue(Queue *);
 

@@ -7,7 +7,7 @@
 #include "queue.h"
 #include <stdio.h>
 
-void initialize(Queue * qPtr){
+void initializeQueue(Queue * qPtr){
 	qPtr->front = NULL;
 	qPtr->back = NULL;
 	qPtr->count = 0;

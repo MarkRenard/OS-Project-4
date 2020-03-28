@@ -18,6 +18,8 @@
 #define maxTimeBetweenNewProcsNS 0U	// Value of nanoseconds in max interval
 #define maxTimeBetweenNewProcsSecs 2U	// Value of seconds in max interval
 
+#define USER_PROG_PATH "./userProgram"	// The path to the user program
+
 #define REAL_TIME_PROBABILITY 0.05	// Probability new process is real time
 
 #define LOOP_INCREMENT_SECONDS 1	// Seconds incremented each iterations
