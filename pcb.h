@@ -13,10 +13,11 @@ typedef enum ProcessState {NEW, READY, RUNNING, BLOCKED, EXIT} ProcessState;
 typedef enum SchedulingClass {NORMAL, REAL_TIME} SchedulingClass;
 
 typedef struct processControlBlock {
-	int pid;			 // Simulated process identifier
+	int simPid;			 // Simulated process identifier
+	int priority;			 // Priority level of the process
 	ProcessState state;		 // The simulated state of the process
 	SchedulingClass schedulingClass; // Whether process is real time
-
+	
 	Clock totalCpuTime;		 // Total simulated execution time
 	Clock timeCreated;		 // Used to compute total time in system
 	Clock timeUsedDurringLastBurst;	 // Time passed durring last execution
@@ -26,6 +27,6 @@ typedef struct processControlBlock {
 	struct processControlBlock * previous;
 } ProcessControlBlock;
 
-ProcessControlBlock initialProcessControlBlock();
+ProcessControlBlock initialProcessControlBlock(int, Clock);
 
 #endif

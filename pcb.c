@@ -6,17 +6,18 @@
 #include "pcb.h"
 
 // Returns an initialized process control block
-ProcessControlBlock initialProcessControlBlock(){
+ProcessControlBlock initialProcessControlBlock(int simPid, Clock currentTime){
 	ProcessControlBlock pcb;
 
-	// Initializes logical pid, process state, and scheduling class
-	pcb.pid = -1;
+	// Initializes logical pid, priority, process state, and scheduling class
+	pcb.simPid = simPid;
+	pcb.priority = 0;
 	pcb.state = NEW;
 	pcb.schedulingClass = NORMAL;
 
 	// Initializes times
 	pcb.totalCpuTime = zeroClock();
-	pcb.timeCreated = zeroClock();
+	pcb.timeCreated = currentTime;
 	pcb.timeUsedDurringLastBurst = zeroClock();
 	pcb.timeOfLastBurst = zeroClock();
 

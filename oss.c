@@ -3,12 +3,12 @@
 // This file contains a program which simulates the scheduling of an operating
 // system using a multi-level feedback queue.
 
+#include <mqueue.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <signal.h>
 #include <unistd.h>
-
 
 #include "constants.h"
 #include "clock.h"
@@ -23,15 +23,13 @@
 /* Prototypes */
 static void launchUserProcesses(Clock *, ProcessControlBlock *);
 static void initializeBitVector(unsigned int *);
-static void generateProcess(ProcessControlBlock*, unsigned int*, Queue*, FILE*);
-static void launchProcess(int simPid);
-static void dispatchProcess(Queue *, FILE *);
-static Message waitForMessage();
-static void processMessage(Message, Queue *, FILE *);
+static void generateProcess(Clock, ProcessControlBlock *, Queue *);
+static void launchProcess(int);
+static ProcessControlBlock * dispatchProcess(Clock, Queue *);
+static void processMessage(const char *, ProcessControlBlock *, Queue *);
 static void assignSignalHandlers();
 static void cleanUpAndExit(int param);
 static void cleanUp();
-//static pid_t launchProcess(int logicalPid);
 
 /* Named constants (computed from values in constants.h) */
 const static Clock minTimeBetweenNewProcs = {0, 0};
@@ -47,7 +45,8 @@ const static Clock MIN_SCHEDULING_TIME = {0, MIN_SCHEDULING_TIME_NS};
 const static Clock MAX_SCHEDULING_TIME = {0, MAX_SCHEDULING_TIME_NS};
 
 /* Static Global Variables */
-static char * shm = NULL;               // Pointer to the shared memory region
+static char * shm = NULL;	// Pointer to the shared memory region
+static int msgQueueId;	// ID of message queue for process dispatching
 
 int main(int argc, char * argv[]){
 	ProcessControlBlock * processTable;	// Shared memory process table
@@ -56,6 +55,8 @@ int main(int argc, char * argv[]){
 	alarm(MAX_SECONDS);		// Limits total execution time
 	exeName = argv[0];		// Assigns exeName for perrorExit
 	assignSignalHandlers();		// Sets response to ctrl + C & alarm
+
+	msgQueueId = getMessageQueue(MQ_KEY, MQ_PERMS | IPC_CREAT);
 
 	getSharedMemoryPointers(&shm, &systemClock, &processTable, IPC_CREAT);
 
@@ -69,21 +70,13 @@ int main(int argc, char * argv[]){
 // Schedules and launches user processes
 static void launchUserProcesses(Clock * systemClock,
 				ProcessControlBlock * processTable) {
-	int totalGenerated = 0;	 // Total processes generated
-	Clock timeToGenerate;	 // Random time to generate the next process
-	Message msg;		 // Message received from the message queue
-	FILE * log;		 // Log of oss activity	
-	Queue q;		 // Queue of process control blocks
+	int totalGenerated = 0;	   // Total processes generated
+	char msgText[MSG_SZ];	   // Message text recieved from last process
+	ProcessControlBlock * pcb; // PCB of last dispatched process
+	Clock timeToGenerate;	   // Random time to generate the next process
+	Queue q;		   // Queue of process control blocks
 
 	initializeQueue(&q);
-
-	// Initializes vector used to track 
-	unsigned int bitVector[BIT_VECTOR_SIZE];
-	initializeBitVector(bitVector);
-
-	// Opens log file
-	if ((log = fopen(LOG_FILE_NAME, "w+")) == NULL)
-		perrorExit("Couldn't open log file");
 
 	// Initializes system clock
 	*systemClock = zeroClock();
@@ -97,13 +90,13 @@ static void launchUserProcesses(Clock * systemClock,
 #endif
 	// Generates and schedules user processes in a loop
 	do {
-		// Generates new process if time reached and block is available
+		// Generates process if time reached and within process limits
 		if (clockCompare(*systemClock, timeToGenerate) >= 0
 		    && q.count < MAX_SIMUL_USER_PROCS
 		    && totalGenerated < MAX_TOTAL_USER_PROCS){
 
-			// Generates new process, logs action, updates counter
-			generateProcess(processTable, bitVector, &q, log);	
+			// Generates new process, updates counter
+			generateProcess(*systemClock, processTable, &q);	
 			totalGenerated++;
 #ifdef DEBUG
 			fprintf(stderr, "\tTotal generated: %d\n", totalGenerated);
@@ -127,7 +120,7 @@ static void launchUserProcesses(Clock * systemClock,
 						  MAX_SCHEDULING_TIME));
 			
 			// Dispatches a process from the queue
-			dispatchProcess(&q, log);
+			pcb = dispatchProcess(*systemClock, &q);
 
 #ifdef DEBUG
 			fprintf(stderr, "\tTime after scheduling: ");
@@ -135,10 +128,10 @@ static void launchUserProcesses(Clock * systemClock,
 #endif
 
 			// Waits for message from dispatched process
-			msg = waitForMessage();
+			waitForMessage(msgText, msgQueueId);
 		
 			// Re-queues process or logs termination
-			processMessage(msg, &q, log);
+			processMessage(msgText, pcb, &q);
 		}
 
 		// Increments system clock
@@ -150,11 +143,10 @@ static void launchUserProcesses(Clock * systemClock,
 		fprintf(stderr, "Time after iteration %d: ", i++);
 		printTimeln(stderr, *systemClock);
 		fprintf(stderr, "\n\n");
+		sleep(1);
 #endif	
 	// Continues until max user processes generated and queue is empty
-	} while ( (totalGenerated < MAX_TOTAL_USER_PROCS || q.count > 0) 
-		   && q.count < MAX_SIMUL_USER_PROCS);
-
+	} while ( (totalGenerated < MAX_TOTAL_USER_PROCS || q.count > 0) );
 }
 
 static void initializeBitVector(unsigned int * bitVector){
@@ -164,20 +156,19 @@ static void initializeBitVector(unsigned int * bitVector){
 	}
 }
 
-
-static void generateProcess(ProcessControlBlock * processTable, 
-			    unsigned int * bitVector, Queue * queue, FILE * log){
+static void generateProcess(Clock time, ProcessControlBlock * processTable, 
+			    Queue * queue){
 #ifdef DEBUG
 	static int num = 1;
 	printf("generateProcess call number %d - q size: %d\n", num++, \
-		++(queue->count));
+		queue->count);
 	fflush(stdout);
 #endif
 
 	static int bitVectorStandIn = 0;
 
 	int newPid = bitVectorStandIn++;
-	processTable[newPid] = initialProcessControlBlock();
+	processTable[newPid] = initialProcessControlBlock(newPid, time);
 
 	enqueue(&processTable[newPid], queue);
 
@@ -190,40 +181,69 @@ static void generateProcess(ProcessControlBlock * processTable,
 static void launchProcess(int simPid){
 	int realPid;
 
-	if ((realPid = fork()) == -1) perrorExit("Failed to fork");
+	sleep(1);
+
+	if ((realPid = fork()) == -1){
+		perrorExit("Failed to fork");
+	}
 
 	if (realPid == 0){
 		char sPid[BUFF_SZ];
 		sprintf(sPid, "%d", simPid);
 
 		execl(USER_PROG_PATH, USER_PROG_PATH, sPid, NULL);
-		perrorExit("Failed to exec user program!");
+		perrorExit("Failed to exec user program");
 	}
 }
 
-static void dispatchProcess(Queue * q, FILE * log){
+static ProcessControlBlock * dispatchProcess(Clock time, Queue * q){
 #ifdef DEBUG
 	static int num = 1;
-	printf("dispatchProcess call number %d - q size: %d\n", num++, --(q->count));
+	printf("dispatchProcess call number %d - q size: %d\n", num++, q->count);
 	fflush(stdout);
 #endif
+	ProcessControlBlock * pcb;
+	char msgText[MSG_SZ];
+
+	// Dequeues a process control block and changes its state to running
+	pcb = dequeue(q);
+	pcb->state = RUNNING;
+
+	// Messages running process with time quantum
+	sprintf(msgText, "%d", BASE_QUANTUM >> pcb->priority);
+	sendMessage(msgText, msgQueueId);			
+
+	return pcb;
 }	
 
-static Message waitForMessage(){
-	Message msg;
-
-	msg.type = 0;
-	strcpy(msg.string, "stuff");
-
-	return msg;
-}
-
-static void processMessage(Message msg, Queue * q, FILE * log){
+static void processMessage(const char * msg, ProcessControlBlock * pcb, 
+			   Queue * q){
 #ifdef DEBUG
 	static int num = 0;
 	printf("processMessage call number %d - q size: %d\n", num++, q->count);
+	printf("\tMessage: %s\n", msg);
 	fflush(stdout);
 #endif
+	unsigned int quantum;		// Nanoseconds allotted to process
+	unsigned int usedNanoseconds;	// Nanoseconds used by the process
+
+	// Computes the number of nanoseconds allotted in last burst
+	quantum = BASE_QUANTUM >> pcb->priority;
+
+	// Converts the message from the process to an integer
+	usedNanoseconds = atoi(msg);
+
+	if (usedNanoseconds == quantum){
+		pcb->state = READY;
+		enqueue(pcb, q);
+	} else {
+
+		pcb->state = EXIT;
+		fprintf(stderr, "PROCESS %d IN EXIT STATE!!!\n", pcb->simPid);
+		fprintf(stderr, "\tusedNanoseconds: %d\n", usedNanoseconds);
+		fprintf(stderr, "\tquantum: %d\n", quantum);
+
+	}
 }
 
 // Determines the processes response to ctrl + c or alarm
@@ -269,7 +289,10 @@ static void cleanUp(){
         // Kills all other processes in the same process group
         kill(0, SIGQUIT);
 
-        // Detatches from and removes shared memory
+	// Removes message queue
+	removeMessageQueue(msgQueueId);      
+	
+	// Detatches from and removes shared memory
         detach(shm);
         removeSegment();
 }

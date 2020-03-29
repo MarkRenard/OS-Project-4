@@ -8,6 +8,8 @@
 #ifndef CONSTANTS_H
 #define CONSTANTS_H
 
+#include <sys/msg.h>
+#include <sys/stat.h>
 
 // Used by oss.c
 #define MAX_SIMUL_PROCS 20		// Max number of processes in the system
@@ -36,7 +38,7 @@
 #define LOG_FILE_NAME "oss_log"		// The name of the output file
 
 #define MAX_TOTAL_USER_PROCS 100	// Max children launched by oss
-#define MAX_SECONDS 3			// Max total execution time of oss
+#define MAX_SECONDS 999			// Max total execution time of oss
 
 
 // Used by userProgram.c
@@ -50,12 +52,19 @@
 
 
 // Used by both
-#define MESSAGE_QUEUE_NAME "/mq"	// The name of the message queue
+#define MQ_KEY 59597192			// The key to the message queue
+#define MQ_PERMS (S_IRUSR | S_IWUSR)	// Message queue permissions
 
+#define TOK_DELIM "_"			// Token delimter for message text
+#define FULL_STR "f"			// Indicates a full quantum was used
+#define TERM_STR "t"			// Indicates the process terminated
+#define BLOCK_STR "b"			// Indcates the process was blocked
+
+#define CONFIRMATION "c"		// Confirms message was received
 
 // Miscelaneous 
 #define BILLION 1000000000U		// The number of nanoseconds in a second
 #define BUFF_SZ 100			// The size of character buffers 
-#define MSG_SZ 100			// Size of Message char arrays
+#define MSG_SZ 128			// Size of Message char arrays
 
 #endif

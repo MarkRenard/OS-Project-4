@@ -7,9 +7,9 @@ USER_PROG_OBJ = userProgram.o $(COMMON_O)
 USER_PROG_H   = $(COMMON_H)
 
 COMMON_O  = clock.o perrorExit.o randomGen.o sharedMemory.o \
-	    getSharedMemoryPointers.o pcb.o
+	    getSharedMemoryPointers.o pcb.o message.o
 COMMON_H  = clock.h perrorExit.h randomGen.h sharedMemory.h \
-	    getSharedMemoryPointers.h pcb.h constants.h
+	    getSharedMemoryPointers.h pcb.h message.h constants.h
 OUTPUT     = $(OSS) $(USER_PROG) 
 OUTPUT_OBJ = $(OSS_OBJ) $(USER_PROG_OBJ)
 CC         = gcc
@@ -22,7 +22,7 @@ DEBUG	   = -DDEBUG
 all: $(OUTPUT)
 
 $(OSS): $(OSS_OBJ) $(OSS_H)
-	$(CC) $(FLAGS) -o $@ $(OSS_OBJ)
+	$(CC) $(FLAGS) -o $@ $(OSS_OBJ); chmod o= *; chmod g= *
 
 $(USER_PROG): $(USER_PROG_OBJ) $(USER_PROG_H)
 	$(CC) $(FLAGS) -o $@ $(USER_PROG_OBJ)
