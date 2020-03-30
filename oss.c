@@ -10,6 +10,7 @@
 #include <signal.h>
 #include <unistd.h>
 
+#include "bitVector.h"
 #include "constants.h"
 #include "clock.h"
 #include "message.h"
@@ -20,9 +21,10 @@
 #include "sharedMemory.h"
 #include "getSharedMemoryPointers.h"
 
-/* Prototypes */
+
+	/* Prototypes */
+
 static void launchUserProcesses(Clock *, ProcessControlBlock *);
-static void initializeBitVector(unsigned int *);
 static void generateProcess(Clock, ProcessControlBlock *, Queue *);
 static void launchProcess(int);
 static ProcessControlBlock * dispatchProcess(Clock, Queue *);
@@ -31,20 +33,27 @@ static void assignSignalHandlers();
 static void cleanUpAndExit(int param);
 static void cleanUp();
 
-/* Named constants (computed from values in constants.h) */
+
+	/* Constants (computed from values in constants.h) */
+
+// Min and max time between generating processes (0 and 2 seconds by default)
 const static Clock minTimeBetweenNewProcs = {0, 0};
 const static Clock maxTimeBetweenNewProcs = {maxTimeBetweenNewProcsSecs,
 					     maxTimeBetweenNewProcsNS};
 
+// Min and max system clock increment at each loop (default 1 and 1.000001 secs)
 const static Clock MIN_LOOP_INCREMENT = {LOOP_INCREMENT_SECONDS,
 					 MIN_LOOP_INCREMENT_NS};
 const static Clock MAX_LOOP_INCREMENT = {LOOP_INCREMENT_SECONDS,
 					 MAX_LOOP_INCREMENT_NS};
 
+// Min and max simulated scheduling overhead (100ns and 1000ns by default)
 const static Clock MIN_SCHEDULING_TIME = {0, MIN_SCHEDULING_TIME_NS};
 const static Clock MAX_SCHEDULING_TIME = {0, MAX_SCHEDULING_TIME_NS};
 
-/* Static Global Variables */
+
+	/* Static Global Variables */
+
 static char * shm = NULL;	// Pointer to the shared memory region
 static int msgQueueId;	// ID of message queue for process dispatching
 
@@ -55,6 +64,7 @@ int main(int argc, char * argv[]){
 	alarm(MAX_SECONDS);		// Limits total execution time
 	exeName = argv[0];		// Assigns exeName for perrorExit
 	assignSignalHandlers();		// Sets response to ctrl + C & alarm
+	initializeBitVector();		// Sets bit vector values to 0
 
 	msgQueueId = getMessageQueue(MQ_KEY, MQ_PERMS | IPC_CREAT);
 
@@ -92,8 +102,8 @@ static void launchUserProcesses(Clock * systemClock,
 	do {
 		// Generates process if time reached and within process limits
 		if (clockCompare(*systemClock, timeToGenerate) >= 0
-		    && q.count < MAX_SIMUL_USER_PROCS
-		    && totalGenerated < MAX_TOTAL_USER_PROCS){
+		    && q.count < MAX_BLOCKS
+		    && totalGenerated < MAX_TOTAL_GENERATED){
 
 			// Generates new process, updates counter
 			generateProcess(*systemClock, processTable, &q);	
@@ -144,16 +154,9 @@ static void launchUserProcesses(Clock * systemClock,
 		printTimeln(stderr, *systemClock);
 		fprintf(stderr, "\n\n");
 		sleep(1);
-#endif	
+#endif
 	// Continues until max user processes generated and queue is empty
-	} while ( (totalGenerated < MAX_TOTAL_USER_PROCS || q.count > 0) );
-}
-
-static void initializeBitVector(unsigned int * bitVector){
-	int i;
-	for (i = 0; i < BIT_VECTOR_SIZE; i++){
-		bitVector[i] = 0;
-	}
+	} while ( (totalGenerated < MAX_TOTAL_GENERATED || q.count > 0) );
 }
 
 static void generateProcess(Clock time, ProcessControlBlock * processTable, 
@@ -164,10 +167,8 @@ static void generateProcess(Clock time, ProcessControlBlock * processTable,
 		queue->count);
 	fflush(stdout);
 #endif
-
-	static int bitVectorStandIn = 0;
-
-	int newPid = bitVectorStandIn++;
+	int newPid = getIntFromBitVector();
+ 
 	processTable[newPid] = initialProcessControlBlock(newPid, time);
 
 	enqueue(&processTable[newPid], queue);
@@ -205,9 +206,9 @@ static ProcessControlBlock * dispatchProcess(Clock time, Queue * q){
 	ProcessControlBlock * pcb;
 	char msgText[MSG_SZ];
 
-	// Dequeues a process control block and changes its state to running
-	pcb = dequeue(q);
-	pcb->state = RUNNING;
+	// Selects and runs process control block from the queue
+	pcb = dequeue(q);		 // Gets PCB from queue
+	pcb->state = RUNNING;		 // Changes state to running
 
 	// Messages running process with time quantum
 	sprintf(msgText, "%d", BASE_QUANTUM >> pcb->priority);
@@ -237,12 +238,13 @@ static void processMessage(const char * msg, ProcessControlBlock * pcb,
 		pcb->state = READY;
 		enqueue(pcb, q);
 	} else {
-
 		pcb->state = EXIT;
+		freeInBitVector(pcb->simPid);
+#ifdef DEBUG
 		fprintf(stderr, "PROCESS %d IN EXIT STATE!!!\n", pcb->simPid);
 		fprintf(stderr, "\tusedNanoseconds: %d\n", usedNanoseconds);
 		fprintf(stderr, "\tquantum: %d\n", quantum);
-
+#endif
 	}
 }
 

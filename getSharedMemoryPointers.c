@@ -11,7 +11,7 @@
 void getSharedMemoryPointers(char ** shm,  Clock ** systemClock,
 			     ProcessControlBlock ** processTable, int flags) {
 	// Computes size of the shared memory region
-	int shmSize = sizeof(ProcessControlBlock) * MAX_SIMUL_USER_PROCS \
+	int shmSize = sizeof(ProcessControlBlock) * MAX_BLOCKS \
                       + sizeof(Clock);
 
 	// Attaches to shared memory

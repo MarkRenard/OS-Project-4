@@ -12,10 +12,8 @@
 #include <sys/stat.h>
 
 // Used by oss.c
-#define MAX_SIMUL_PROCS 20		// Max number of processes in the system
-#define MAX_SIMUL_USER_PROCS MAX_SIMUL_PROCS - 2 // Max simultaneous children
-
-#define BIT_VECTOR_SIZE MAX_SIMUL_PROCS % 32 + 1 // Size of bit vector
+#define MAX_SIMUL_PROCS 20 		// Max number of processes in the system
+#define MAX_BLOCKS MAX_SIMUL_PROCS - 2	// Max simultaneous children
 
 #define maxTimeBetweenNewProcsNS 0U	// Value of nanoseconds in max interval
 #define maxTimeBetweenNewProcsSecs 2U	// Value of seconds in max interval
@@ -37,8 +35,8 @@
 
 #define LOG_FILE_NAME "oss_log"		// The name of the output file
 
-#define MAX_TOTAL_USER_PROCS 100	// Max children launched by oss
-#define MAX_SECONDS 999			// Max total execution time of oss
+#define MAX_TOTAL_GENERATED 100		// Max children launched by oss
+#define MAX_SECONDS 99			// Max total execution time of oss
 
 
 // Used by userProgram.c
@@ -55,16 +53,16 @@
 #define MQ_KEY 59597192			// The key to the message queue
 #define MQ_PERMS (S_IRUSR | S_IWUSR)	// Message queue permissions
 
-#define TOK_DELIM "_"			// Token delimter for message text
-#define FULL_STR "f"			// Indicates a full quantum was used
-#define TERM_STR "t"			// Indicates the process terminated
-#define BLOCK_STR "b"			// Indcates the process was blocked
 
-#define CONFIRMATION "c"		// Confirms message was received
+// Used by bitVector.c
+#define NUM_BITS sizeof(unsigned int) * 8  // Bits per unsigned int
+#define MAX_VALUE MAX_BLOCKS - 1 // Max int tracked in bit vector
+#define BIT_VECTOR_SIZE MAX_VALUE / NUM_BITS + 1 // Size of bit vector
+
 
 // Miscelaneous 
 #define BILLION 1000000000U		// The number of nanoseconds in a second
 #define BUFF_SZ 100			// The size of character buffers 
-#define MSG_SZ 128			// Size of Message char arrays
+#define MSG_SZ 30			// Size of Message char arrays
 
 #endif
