@@ -14,6 +14,7 @@ typedef struct clock {
 } Clock;
 
 Clock zeroClock();
+Clock newClock(unsigned int seconds, unsigned int nanoseconds);
 Clock randomTime(Clock min, Clock max);
 void copyTime(Clock * dest, const Clock src);
 void incrementClock(Clock * clock, const Clock increment);

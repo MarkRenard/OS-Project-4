@@ -8,10 +8,16 @@
 #include <stdio.h>
 
 #define BILLION 1000000000
+#define FORMAT "%03d : %09d"
 
 // Returns a clock initialized to zero seconds, zero nanoseconds
 Clock zeroClock(){
 	Clock clock = {0, 0};
+	return clock;
+}
+
+Clock newClock(unsigned int seconds, unsigned int nanoseconds){
+	Clock clock = {seconds, nanoseconds};
 	return clock;
 }
 
@@ -80,12 +86,11 @@ int clockCompare(const Clock clk1, const Clock clk2){
 // Formats and prints the time on the clock to the file
 void printTime(FILE * fp, const Clock clock){
 	fprintf(fp,
-		"%03d : %09d",
+		FORMAT,
 		clock.seconds,
 		clock.nanoseconds
 	);
 }
-
 
 // Formats and prints the time on the clock to the file and a new line char
 void printTimeln(FILE * fp, const Clock clock){

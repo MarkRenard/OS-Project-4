@@ -22,6 +22,8 @@ int main(int argc, char * argv[]){
 	unsigned int seed;	
 	int boolArray[MAX_VALUE + 1];
 
+	exeName = argv[0];
+
 	// Gets seed from argument vector or exits with an error message
 	if (argc < 2 || (seed = (unsigned int)atoi(argv[1])) == 0)
 		perrorExit("The first argument must be a non-zero seed");

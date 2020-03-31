@@ -14,8 +14,8 @@ typedef struct message {
 } Message;
 
 int getMessageQueue(int key, int flags);
-void sendMessage(const char * msgText, int msgQueueId);
-void waitForMessage(char * msgText, int msgQueueId);
+void sendMessage(int msgQueueId, const char * msgText, long int type);
+void waitForMessage(int msgQueueId, char * msgText, long int type);
 void removeMessageQueue(int msgQueueId);
 
 #endif

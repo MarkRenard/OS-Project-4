@@ -22,11 +22,11 @@ int getMessageQueue(int key, int flags){
 }
 
 // Adds a message to the message queue with the specified message queue id
-void sendMessage(const char * msgText, int msgQueueId){
+void sendMessage(int msgQueueId, const char * msgText, long int type){
 	Message msg;	// Buffer for the message to be sent
 
 	// Initializes message
-	msg.type = MSG_TYPE;
+	msg.type = type;
 	strcpy(msg.str, msgText);
 	
 	// Sends message
@@ -34,13 +34,13 @@ void sendMessage(const char * msgText, int msgQueueId){
 		perrorExit("Couldn't send message");
 }
 
-// Blocks until a message is recieved in the message queue with specified id
-void waitForMessage(char * msgText, int msgQueueId){
+// Blocks until a message of the selected type is recieved in the selected queue
+void waitForMessage(int msgQueueId, char * msgText, long int type){
 	Message msg;	// Buffer for message to be received
 
 	// Waits for message
 	if ((msgrcv(msgQueueId, (void *)&msg, \
-		sizeof(msg.str), MSG_TYPE, 0)) == -1)
+		sizeof(msg.str), type, 0)) == -1)
 			perrorExit("Error waiting for message");
 
 	// Copies message text

@@ -21,54 +21,45 @@ int main(int argc, char * argv[]){
 	char * shm;				// Pointer to shared memory
 	Clock * systemClock;			// Shared memory process table
 	ProcessControlBlock * processTable;	// Shared memory system clock
-	int simPid;				// Simulated pid of process
-	int messageQueueId;			// Used to access queue
-	char msgText[MSG_SZ];			// Queue message text
-	int finished = 0;			// Nonzero when finished
 
-	exeName = argv[0];	// Assigns executable name for perrorExit
+	int dispatchMqId;	// Message queue ID for dispatch messages
+	int interruptMqId;	// Message queue ID for reporting interrupts
+	char msgBuff[MSG_SZ];	// Buffer for sending and receiving messages
 
-	// Gets logical pid of process
-	if (argc < 2) perrorExit("Must pass logical pid of process in argv");
-	simPid = atoi(argv[1]);
+	int simPid = atoi(argv[1]); // Gets simulated pid of the process
 
 	// Attatches to shared memory and gets pointers
 	getSharedMemoryPointers(&shm, &systemClock, &processTable, 0);
 
-	// Gets message queue
-	messageQueueId = getMessageQueue(MQ_KEY, MQ_PERMS);
+	// Used to reseed prng
+	srand(BASE_SEED + simPid + (*systemClock).nanoseconds);
 
+	// Gets message queues
+	dispatchMqId = getMessageQueue(DISPATCH_MQ_KEY, MQ_PERMS);
+	interruptMqId = getMessageQueue(INTERRUPT_MQ_KEY, MQ_PERMS);
+	
+	int finished = 0; // Nonzero when finished
 	while (!finished){
-
+	
 		// Keeps checking shared memory location if it's been scheduled
 		while (processTable[simPid].state != RUNNING);
 
 		// Waits for time quantum from oss
-		waitForMessage(msgText, messageQueueId);
-
-#ifdef DEBUG
-		fprintf(stderr, "\t PROCESS %d RUNNING!\n", simPid);
-		fprintf(stderr, "\t\t MESSAGE: %s\n", msgText);
-		//sleep(2);
-#endif
+		waitForMessage(dispatchMqId, msgBuff, simPid + 1);
 
 		// Determines whether process will terminate
 		if (randBinary(TERMINATION_PROBABILITY)){
 			finished = 1;
-			determineTimeUsed(msgText);
+			determineTimeUsed(msgBuff);
 		}	
 
-	
-		// Sends message to oss
-		sendMessage(msgText, messageQueueId);
+		// Sends message to oss, unmodified if entire quantum used
+		sendMessage(interruptMqId, msgBuff, simPid + 1);
 
 		// Waits for state change
-		while (processTable[simPid].state == RUNNING); 
+		// while (processTable[simPid].state == RUNNING); 
 	}
 
-#ifdef DEBUG
-	fprintf(stderr, "\tPROCESS %d RUNNING!\n", simPid);
-#endif	
 	return 0;
 }
 
