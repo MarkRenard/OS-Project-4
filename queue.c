@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "queue.h"
+#include "perrorExit.h"
 #include <stdio.h>
 
 void initializeQueue(Queue * qPtr){
@@ -24,7 +25,7 @@ void printQueue(FILE * fp, const Queue * q){
 }
 
 // Adds a process control block to the back of the queue
-void enqueue(ProcessControlBlock * pcb, Queue * q){
+void enqueue(Queue * q, ProcessControlBlock * pcb){
 #ifdef DEBUG_Q
 	fprintf(stderr, "\tenqueue(%02d): ", pcb->simPid);
 	printQueue(stderr, q);
@@ -51,15 +52,15 @@ void enqueue(ProcessControlBlock * pcb, Queue * q){
 // Removes and returns ProcessControlBlock reference from the front of the queue
 ProcessControlBlock * dequeue(Queue * q){
 
-	// Returns null if the queue is already empty
-	if (q->front == NULL) return NULL;
+	// Exits with an error message if queue is empty
+	if (q->count <= 0 || q->front == NULL || q->back == NULL)
+		perrorExit("Called dequeue on empty queue");
 
 	// Assigns current front of queue to returnVal
 	ProcessControlBlock * returnVal = q->front;  	
 	
 	// Removes the front node from the queue
 	q->front = q->front->previous; // Assigns new front of queue
-	q->count--; // Decrements queue node count
 	returnVal->previous = NULL; // Removes previous from dequeued block
 		
 	// Sets queue back to null if empty
@@ -70,6 +71,8 @@ ProcessControlBlock * dequeue(Queue * q){
 	printQueue(stderr, q);
 	fprintf(stderr, "\n");
 #endif
+
+	q->count--;
 	return returnVal;
 
 

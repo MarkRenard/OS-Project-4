@@ -17,6 +17,7 @@
 #include "clock.h"
 #include "logging.h"
 #include "message.h"
+#include "multiQueue.h"
 #include "pcb.h"
 #include "perrorExit.h"
 #include "queue.h"
@@ -28,10 +29,10 @@
 	/* Prototypes */
 
 static void launchUserProcesses(Clock *, ProcessControlBlock *);
-static void generateProcess(Clock, ProcessControlBlock *, Queue *);
+static void generateProcess(Clock, ProcessControlBlock *, MultiQueue *);
 static void launchProcess(int);
-static ProcessControlBlock * dispatchProcess(Clock, Queue *);
-static unsigned int processMessage(const char*, ProcessControlBlock*, Queue*);
+static ProcessControlBlock * dispatchProcess(Clock, MultiQueue *);
+static unsigned int processMessage(const char*, ProcessControlBlock*, MultiQueue *);
 static void assignSignalHandlers();
 static void cleanUpAndExit(int param);
 static void cleanUp();
@@ -96,9 +97,9 @@ static void launchUserProcesses(Clock * systemClock,
 	
 	int totalGenerated = 0;	   // Total processes generated
 	Clock timeToGenerate;	   // Random time to generate the next process
-	Queue q;		   // Queue of process control blocks
+	MultiQueue q;		   // MultiQueue of process control blocks
 
-	initializeQueue(&q);
+	initializeMultiQueue(&q);
 
 	// Initializes system clock
 	*systemClock = zeroClock();
@@ -156,7 +157,7 @@ static void launchUserProcesses(Clock * systemClock,
 
 // Creates a process control block and launches a corresponding process
 static void generateProcess(Clock time, ProcessControlBlock * processTable, 
-			    Queue * queue){
+			    MultiQueue * queue){
 	int newPid;	// The simulated pid of the new process
 
 	// Gets an available simulated pid from the int vector
@@ -167,11 +168,15 @@ static void generateProcess(Clock time, ProcessControlBlock * processTable,
 	// Initializes the process control block for the new process
 	processTable[newPid] = initialProcessControlBlock(newPid, time);
 
+	// Determines scheduling class
+	if (randBinary(REAL_TIME_PROBABILITY))
+		processTable[newPid].schedulingClass = REAL_TIME;
+
 	// Logs process generation
 	logGeneration(newPid, processTable[newPid].priority, time);
 
 	// Adds the new process control block to the queue
-	enqueue(&processTable[newPid], queue);
+	mEnqueue(queue, &processTable[newPid]);
 
 #ifdef DEBUG
 	fprintf(stderr, "About to launch process %d\n", newPid);
@@ -208,20 +213,21 @@ static void launchProcess(int simPid){
 }
 
 // Dequeues a PCB, changes state to running, and messages process with quantum
-static ProcessControlBlock * dispatchProcess(Clock time, Queue * q){
+static ProcessControlBlock * dispatchProcess(Clock time, MultiQueue * q){
 	ProcessControlBlock * pcb; // PCB of dispatched process
 	char msgText[MSG_SZ];      // Buffer of message to add to message queue
 
-	// Logs dispatch and time
-	logDispatch(q->front->simPid, q->front->priority, time); 
 
 	// Selects and runs a process
-	pcb = dequeue(q);		// Gets PCB from queue
+	pcb = mDequeue(q, time);	// Gets PCB from queue
 	pcb->state = RUNNING;		// Changes state to running
 
 	// Messages running process with time quantum
 	sprintf(msgText, "%d", BASE_QUANTUM >> pcb->priority);
 	sendMessage(dispatchMqId, msgText, pcb->simPid + 1);
+
+	// Logs dispatch
+	logDispatch(pcb->simPid, pcb->priority, time); 
 
 	// Returns process control block of dispatched process
 	return pcb;
@@ -229,7 +235,7 @@ static ProcessControlBlock * dispatchProcess(Clock time, Queue * q){
 
 // Records message from user process, re-enqueues or removes pcb
 static unsigned int processMessage(const char * msg, ProcessControlBlock * pcb,
-				   Queue * q){
+				   MultiQueue * q){
 	unsigned int quantum;		// Nanoseconds allotted to process
 	unsigned int usedNanoseconds;	// Nanoseconds used by the process
 
@@ -249,7 +255,7 @@ static unsigned int processMessage(const char * msg, ProcessControlBlock * pcb,
 		// Logs the simPid and queue number of re-enqueued pcb
 		logEnqueue(pcb->simPid, pcb->priority);
 
-		enqueue(pcb, q);
+		mEnqueue(q, pcb);
 
 	// If process terminted, changes state to exit, waits, and frees simPid
 	} else {
@@ -275,8 +281,15 @@ static void assignSignalHandlers(){
         // Assigns signals to sigact
         if ((sigemptyset(&sigact.sa_mask) == -1)
             ||(sigaction(SIGALRM, &sigact, NULL) == -1)
-            ||(sigaction(SIGINT, &sigact, NULL)  == -1))
-                perrorExit("Faild to install signal handler");
+            ||(sigaction(SIGINT, &sigact, NULL)  == -1)){
+
+		// Manually prints error message and exits
+		char buff[BUFF_SZ];
+		sprintf(buff, "%s: ERROR: Failed to install signal handlers", 
+			exeName);
+                perror(buff);
+		exit(1);
+	}
 }
 
 // Signal handler - closes files, removes shm, terminates children, and exits

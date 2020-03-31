@@ -12,8 +12,9 @@ typedef struct Queue {
 	int count;
 } Queue;
 
+void printQueue(FILE *, const Queue *);
 void initializeQueue(Queue *);
-void enqueue(ProcessControlBlock *, Queue *);
+void enqueue(Queue *, ProcessControlBlock *);
 ProcessControlBlock * dequeue(Queue *);
 
 #endif

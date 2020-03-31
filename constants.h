@@ -14,7 +14,7 @@
 
 // Used by oss.c
 #define MAX_SIMUL_PROCS 20 		// Max number of processes in the system
-#define MAX_BLOCKS MAX_SIMUL_PROCS - 2	// Max simultaneous children
+#define MAX_BLOCKS (MAX_SIMUL_PROCS - 2)// Max simultaneous children
 
 #define maxTimeBetweenNewProcsNS 0U	// Value of nanoseconds in max interval
 #define maxTimeBetweenNewProcsSecs 2U	// Value of seconds in max interval
@@ -37,7 +37,7 @@
 #define LOG_FILE_NAME "oss_log"		// The name of the output file
 
 #define MAX_TOTAL_GENERATED 100		// Max children launched by oss
-#define MAX_SECONDS 3	 		// Max total execution time of oss
+#define MAX_SECONDS 99999	 		// Max total execution time of oss
 
 
 // Used by userProgram.c
@@ -60,7 +60,7 @@
 
 // Used by bitVector.c
 #define NUM_BITS (sizeof(unsigned int) * 8)  // Bits per unsigned int
-#define MAX_VALUE MAX_BLOCKS - 1 	   // Max int tracked in bit vector
+#define MAX_VALUE (MAX_BLOCKS - 1) 	   // Max int tracked in bit vector
 #define BIT_VECTOR_SIZE (MAX_VALUE / NUM_BITS + 1) // Size of bit vector
 
 

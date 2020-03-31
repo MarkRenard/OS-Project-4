@@ -1,6 +1,6 @@
 OSS	= oss
-OSS_OBJ	= oss.o queue.o bitVector.o logging.o $(COMMON_O)
-OSS_H	= queue.h bitVector.h logging.h $(COMMON_H)
+OSS_OBJ	= oss.o queue.o multiQueue.o bitVector.o logging.o $(COMMON_O)
+OSS_H	= queue.h multiQueue.h bitVector.h logging.h $(COMMON_H)
 
 USER_PROG	= userProgram
 USER_PROG_OBJ	= userProgram.o $(COMMON_O)
