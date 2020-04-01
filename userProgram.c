@@ -15,7 +15,10 @@
 #include "perrorExit.h"
 #include "randomGen.h"
 
-static void determineTimeUsed(char * msgText);
+static void terminateProcedure(char * msgText);
+static void useEntireQuantumProcedure(char * msgText);
+static void createReplyMessage(char * msgText, char stateChar, int usedNano,
+                               int r, int s);
 
 int main(int argc, char * argv[]){
 	char * shm;				// Pointer to shared memory
@@ -23,7 +26,7 @@ int main(int argc, char * argv[]){
 	ProcessControlBlock * processTable;	// Shared memory system clock
 
 	int dispatchMqId;	// Message queue ID for dispatch messages
-	int interruptMqId;	// Message queue ID for reporting interrupts
+	int replyMqId;		// Message queue ID for replying to oss
 	char msgBuff[MSG_SZ];	// Buffer for sending and receiving messages
 
 	int simPid = atoi(argv[1]); // Gets simulated pid of the process
@@ -31,43 +34,91 @@ int main(int argc, char * argv[]){
 	// Attatches to shared memory and gets pointers
 	getSharedMemoryPointers(&shm, &systemClock, &processTable, 0);
 
-	// Used to reseed prng
-	srand(BASE_SEED + simPid + (*systemClock).nanoseconds);
+	// Seeds off a function of the process id
+	srand(BASE_SEED + simPid + systemClock->nanoseconds);
 
 	// Gets message queues
 	dispatchMqId = getMessageQueue(DISPATCH_MQ_KEY, MQ_PERMS);
-	interruptMqId = getMessageQueue(INTERRUPT_MQ_KEY, MQ_PERMS);
-	
+	replyMqId = getMessageQueue(REPLY_MQ_KEY, MQ_PERMS);
+
 	int finished = 0; // Nonzero when finished
 	while (!finished){
 	
 		// Keeps checking shared memory location if it's been scheduled
 		while (processTable[simPid].state != RUNNING);
 
-		// Waits for time quantum from oss
+		// Waits on recieving a message giving it a timeslice
 		waitForMessage(dispatchMqId, msgBuff, simPid + 1);
 
-		// Determines whether process will terminate
+		// Decides if process terminates before using entire quantum
 		if (randBinary(TERMINATION_PROBABILITY)){
 			finished = 1;
-			determineTimeUsed(msgBuff);
-		}	
+			terminateProcedure(msgBuff);
 
-		// Sends message to oss, unmodified if entire quantum used
-		sendMessage(interruptMqId, msgBuff, simPid + 1);
+		// Determines whether process will get blocked or preempted
+		} /*else if (randomDouble(0, 1) < BLOCK_OR_PREEMPT_PROBABILITY){
+			unsigned int r = randUnsigned(0, 3);
+			unsigned int s = randUnsigned(0, 1000);
 
-		// Waits for state change
-		// while (processTable[simPid].state == RUNNING); 
+			if (r == 3){
+				preemptProcedure(msgBuff);
+			} else {
+				blockProcedure(msgBuff);
+			}
+
+		// Indicates that the process will not terminate within quantum
+		}*/ else {
+			// Adds one to quantum to indicate non-termination
+			useEntireQuantumProcedure(msgBuff);
+		}
+
+		// Indicates quantum use and whether terminating or blocking
+		sendMessage(replyMqId, msgBuff, simPid + 1);
 	}
 
 	return 0;
 }
 
-static void determineTimeUsed(char * msgText){
-	unsigned int timeUsed;
+// Changes msgText indicating partial quantum use before termination
+static void terminateProcedure(char * msgText){
+	unsigned int usedNano;	// Stores burst length in nanoseconds
 	unsigned int quantum = atoi(msgText);
 
-	timeUsed = randUnsigned(0, quantum);
+	// Generates random number in range [0, quantum] to see how long it runs
+	usedNano = randUnsigned(0, quantum);
 
-	sprintf(msgText, "%d", timeUsed);
+	createReplyMessage(msgText, TERMINATION_CH, usedNano, -1, -1);
 }
+
+// Changes msgText indicating use of entire quantum
+static void useEntireQuantumProcedure(char * msgText){
+	unsigned int quantum = atoi(msgText);
+
+	createReplyMessage(msgText, USES_ALL_QUANTUM_CH, quantum, -1, -1);
+}
+
+// Changes msgText to use in the repy queue, char by char
+static void createReplyMessage(char * msgText, char stateChar, int usedNano, 
+			       int r, int s){
+	int i = 0;
+	
+	// Adds stateChar
+	msgText[i++] = stateChar;
+	msgText[i++] = DELIM;
+
+	// Adds time used
+	char usedNanoBuff[BUFF_SZ];
+	sprintf(usedNanoBuff, "%d", usedNano);
+
+	do {
+		msgText[i] = usedNanoBuff[i - 2];
+	} while (msgText[i++] != '\0');
+	msgText[i++] = DELIM;
+
+	// Adds time of I/O event if blocking
+	if (stateChar == WAITING_FOR_IO_CH){
+		// TODO
+	}
+
+}
+	

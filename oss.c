@@ -33,6 +33,7 @@ static void generateProcess(Clock, ProcessControlBlock *, MultiQueue *);
 static void launchProcess(int);
 static ProcessControlBlock * dispatchProcess(Clock, MultiQueue *);
 static unsigned int processMessage(const char*, ProcessControlBlock*, MultiQueue *);
+void parseMessage(char *, unsigned int *, int *, int *, const char*);
 static void assignSignalHandlers();
 static void cleanUpAndExit(int param);
 static void cleanUp();
@@ -75,7 +76,7 @@ int main(int argc, char * argv[]){
 
 	// Creates message queues
 	dispatchMqId = getMessageQueue(DISPATCH_MQ_KEY, MQ_PERMS | IPC_CREAT);
-	interruptMqId = getMessageQueue(INTERRUPT_MQ_KEY, MQ_PERMS | IPC_CREAT);
+	interruptMqId = getMessageQueue(REPLY_MQ_KEY, MQ_PERMS | IPC_CREAT);
 
 	// Creates shared memory region and gets pointers
 	getSharedMemoryPointers(&shm, &systemClock, &processTable, IPC_CREAT);
@@ -235,31 +236,30 @@ static ProcessControlBlock * dispatchProcess(Clock currentTime, MultiQueue * q){
 	return pcb;
 }	
 
-// Records message from user process, re-enqueues or removes pcb
+// Records msg from user process, re-enqueues or removes pcb
 static unsigned int processMessage(const char * msg, ProcessControlBlock * pcb,
 				   MultiQueue * q){
-	unsigned int quantum;		// Nanoseconds allotted to process
-	unsigned int usedNanoseconds;	// Nanoseconds used by the process
+	// Used to store values encoded in message
+	char stateChar;		// Indicates one of four results of the burst
+	unsigned int usedNano;	// Number of nanoseconds used by process
+	int r;			// Seconds until an I/O event, if any
+	int s;			// Milliseconds until an I/O event, if any
 
-	// Computes the number of nanoseconds allotted in last burst
-	quantum = BASE_QUANTUM >> pcb->priority;
-
-	// Converts the message from the process to an integer
-	usedNanoseconds = atoi(msg);
+	parseMessage(&stateChar, &usedNano, &r, &s, msg);
 
 	// Writes a line to the log indicating pid and burst time
-	logMessageReciept(pcb->simPid, usedNanoseconds);
+	logMessageReciept(pcb->simPid, usedNano);
 
 	// Re-enqueues pcb if entire quantum was used
-	if (usedNanoseconds == quantum){
+	if (stateChar == USES_ALL_QUANTUM_CH){
 
 		// Updates state
 		pcb->state = READY;
 
 		// Updates time figures in pcb
-		Clock timeUsed = newClock(0, quantum);
-		pcb->timeUsedDurringLastBurst = timeUsed;
-		incrementClock(&pcb->totalCpuTime, timeUsed);
+		Clock usedNanoClock = newClock(0, usedNano);
+		pcb->timeUsedDurringLastBurst = usedNanoClock;
+		incrementClock(&pcb->totalCpuTime, usedNanoClock);
 
 		mEnqueue(q, pcb);
 
@@ -267,7 +267,7 @@ static unsigned int processMessage(const char * msg, ProcessControlBlock * pcb,
 		logEnqueue(pcb->simPid, pcb->priority);
 
 	// If process terminted, changes state to exit, waits, and frees simPid
-	} else {
+	} else if (stateChar == TERMINATION_CH){
 		pcb->state = EXIT;
 		wait(NULL);
 		freeInBitVector(pcb->simPid);
@@ -276,7 +276,30 @@ static unsigned int processMessage(const char * msg, ProcessControlBlock * pcb,
 		logPartialQuantumUse();
 	}
 
-	return usedNanoseconds;
+	return usedNano;
+}
+
+// Parses a message received from child process
+void parseMessage(char * stateChar, unsigned int * usedNano, int * r, int * s,
+		  const char * msg){
+	int i = 0;
+
+	// Gets state char
+	*stateChar = msg[i];
+	i += 2;
+
+	// Gets usedNano
+	char usedNanoBuff[BUFF_SZ];
+	do{
+		usedNanoBuff[i] = msg[i];
+	} while (usedNanoBuff[i++] != '\0');
+	i++; 					// Skips over DELIM
+	*usedNano = atoi(usedNanoBuff);		// Converts to int
+
+	// Gets r and s if state char indicates I/O event
+	if (*stateChar == WAITING_FOR_IO_CH){
+		//TODO
+	}
 }
 
 // Determines the processes response to ctrl + c or alarm

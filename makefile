@@ -24,7 +24,6 @@ OUTPUT_OBJ = $(OSS_OBJ) $(USER_PROG_OBJ)
 CC         = gcc
 FLAGS      = -Wall -g -lm $(DEBUG) $(DEF) 
 DEBUG	   = -DDEBUG_Q
-DEF	   = #-DSEED 123
 
 .SUFFIXES: .c .o
 

@@ -52,11 +52,16 @@
 
 // Used by both oss.c and userProgram.c
 #define DISPATCH_MQ_KEY 59597192	// Message queue key for dispatch
-#define INTERRUPT_MQ_KEY 38257848	// Message queue key for interrupts
+#define REPLY_MQ_KEY 38257848	// Message queue key for interrupts
 #define MQ_PERMS (S_IRUSR | S_IWUSR)	// Message queue permissions
 
 #define BASE_SEED 8853984		// Used in calls to srand
 
+#define TERMINATION_CH 't'		// Indicates process termination
+#define USES_ALL_QUANTUM_CH 'u'		// Indicates process used entire quantum
+#define WAITING_FOR_IO_CH 'w'		// Indicates process is waiting for I/O
+#define PREEMPT_CH 'p'			// Indicates process was preempted
+#define DELIM ' '			// Message text delimiter
 
 // Used by bitVector.c
 #define NUM_BITS (sizeof(unsigned int) * 8)  // Bits per unsigned int
@@ -76,11 +81,5 @@
 #define MSG_SZ 30			// Size of Message char arrays
 
 #define MAX_LOG_LINES 10000		// Max number of lines in the log file
-
-
-// Editable from makefile
-#ifdef SEED
-#define BASE_SEED SEED
-#endif
 
 #endif
