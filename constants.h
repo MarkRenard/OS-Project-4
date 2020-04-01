@@ -64,6 +64,12 @@
 #define BIT_VECTOR_SIZE (MAX_VALUE / NUM_BITS + 1) // Size of bit vector
 
 
+// Used by multiQueue.c to determine sufficient age for priority queue promotion
+#define PROMOTION_WAIT_TIME_THRESHOLD_NS 0 // Aging criterion for promotion ns
+#define PROMOTION_WAIT_TIME_THRESHOLD_SEC MAX_BLOCKS // Aging criterion seconds
+#define UTIL_THRESHOLD (1 / (long double) multiQ->count) // Cpu use criterion
+
+
 // Miscelaneous 
 #define BILLION 1000000000U		// The number of nanoseconds in a second
 #define BUFF_SZ 100			// The size of character buffers 

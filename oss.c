@@ -158,19 +158,19 @@ static void launchUserProcesses(Clock * systemClock,
 // Creates a process control block and launches a corresponding process
 static void generateProcess(Clock time, ProcessControlBlock * processTable, 
 			    MultiQueue * queue){
-	int newPid;	// The simulated pid of the new process
+	int newPid;		// The simulated pid of the new process
+	SchedulingClass class;	// The scheduling class of the new process
 
 	// Gets an available simulated pid from the int vector
 	newPid = getIntFromBitVector();
 	if (newPid == -1)
 		perrorExit("generateProcess called with no available PCBs");
- 
-	// Initializes the process control block for the new process
-	processTable[newPid] = initialProcessControlBlock(newPid, time);
 
 	// Determines scheduling class
-	if (randBinary(REAL_TIME_PROBABILITY))
-		processTable[newPid].schedulingClass = REAL_TIME;
+	class = randBinary(REAL_TIME_PROBABILITY) ? REAL_TIME : NORMAL;
+ 
+	// Initializes the process control block for the new process
+	processTable[newPid] = initialProcessControlBlock(newPid, time, class);
 
 	// Logs process generation
 	logGeneration(newPid, processTable[newPid].priority, time);
@@ -213,21 +213,23 @@ static void launchProcess(int simPid){
 }
 
 // Dequeues a PCB, changes state to running, and messages process with quantum
-static ProcessControlBlock * dispatchProcess(Clock time, MultiQueue * q){
+static ProcessControlBlock * dispatchProcess(Clock currentTime, MultiQueue * q){
 	ProcessControlBlock * pcb; // PCB of dispatched process
 	char msgText[MSG_SZ];      // Buffer of message to add to message queue
 
+	// Selects a process control block from the multi-level feedback queue
+	pcb = mDequeue(q, currentTime);
 
-	// Selects and runs a process
-	pcb = mDequeue(q, time);	// Gets PCB from queue
-	pcb->state = RUNNING;		// Changes state to running
+	// Updates pcb values
+	pcb->timeOfLastBurst = currentTime;
+	pcb->state = RUNNING;
 
 	// Messages running process with time quantum
 	sprintf(msgText, "%d", BASE_QUANTUM >> pcb->priority);
 	sendMessage(dispatchMqId, msgText, pcb->simPid + 1);
 
 	// Logs dispatch
-	logDispatch(pcb->simPid, pcb->priority, time); 
+	logDispatch(pcb->simPid, pcb->priority, currentTime); 
 
 	// Returns process control block of dispatched process
 	return pcb;
@@ -250,12 +252,19 @@ static unsigned int processMessage(const char * msg, ProcessControlBlock * pcb,
 
 	// Re-enqueues pcb if entire quantum was used
 	if (usedNanoseconds == quantum){
+
+		// Updates state
 		pcb->state = READY;
+
+		// Updates time figures in pcb
+		Clock timeUsed = newClock(0, quantum);
+		pcb->timeUsedDurringLastBurst = timeUsed;
+		incrementClock(&pcb->totalCpuTime, timeUsed);
+
+		mEnqueue(q, pcb);
 
 		// Logs the simPid and queue number of re-enqueued pcb
 		logEnqueue(pcb->simPid, pcb->priority);
-
-		mEnqueue(q, pcb);
 
 	// If process terminted, changes state to exit, waits, and frees simPid
 	} else {
@@ -283,9 +292,9 @@ static void assignSignalHandlers(){
             ||(sigaction(SIGALRM, &sigact, NULL) == -1)
             ||(sigaction(SIGINT, &sigact, NULL)  == -1)){
 
-		// Manually prints error message and exits
+		// Prints error message and exits on failure
 		char buff[BUFF_SZ];
-		sprintf(buff, "%s: ERROR: Failed to install signal handlers", 
+		sprintf(buff, "%s: Error: Failed to install signal handlers", 
 			exeName);
                 perror(buff);
 		exit(1);

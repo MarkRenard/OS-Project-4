@@ -10,6 +10,10 @@ BV_TEST		= bvTest
 BV_TEST_OBJ	= bvTest.o bitVector.o perrorExit.o randomGen.o
 BV_TEST_H	= bitVector.h constants.h perrorExit.h randomGen.h
 
+CLOCK_TEST	= clockTest
+CLOCK_TEST_OBJ	= clockTest.o clock.o randomGen.o
+CLOCK_TEST_H	= clock.h randomGen.h
+
 COMMON_O  = clock.o perrorExit.o randomGen.o sharedMemory.o \
 	    getSharedMemoryPointers.o pcb.o message.o
 COMMON_H  = clock.h perrorExit.h randomGen.h sharedMemory.h \
@@ -35,17 +39,22 @@ $(USER_PROG): $(USER_PROG_OBJ) $(USER_PROG_H)
 $(BV_TEST): $(BV_TEST_OBJ) $(BV_TEST_H)
 	$(CC) $(FLAGS) -o $@ $(BV_TEST_OBJ) 
 
+$(CLOCK_TEST): $(CLOCK_TEST_OBJ) $(CLOCK_TEST_H)
+	$(CC) $(FLAGS) -o $@ $(CLOCK_TEST_OBJ)
+
 .c.o:
 	$(CC) $(FLAGS) -c $<
 
 .PHONY: clean rmfiles cleanall
 clean:
 	/bin/rm -f $(OUTPUT) $(OUTPUT_OBJ)
-cleantest:
+cleanbvtest:
 	/bin/rm -f $(BV_TEST) $(BV_TEST).o
+cleanclocktest:
+	/bin/rm -f $(CLOCK_TEST) $(CLOCK_TEST).o
 rmfiles:
 	/bin/rm -f oss_log 
 cleanall:
-	/bin/rm -f oss_log $(OUTPUT) $(OUTPUT_OBJ) $(BV_TEST) $(BV_TEST_OBJ)
+	/bin/rm -f oss_log $(OUTPUT) $(OUTPUT_OBJ) $(BV_TEST) $(BV_TEST_OBJ) $(CLOCK_TEST) $(CLOCK_TEST_OBJ)
 
 

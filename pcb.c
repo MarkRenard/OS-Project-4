@@ -6,22 +6,41 @@
 #include "pcb.h"
 
 // Returns an initialized process control block
-ProcessControlBlock initialProcessControlBlock(int simPid, Clock currentTime){
+ProcessControlBlock initialProcessControlBlock(int simPid, Clock currentTime,
+					       SchedulingClass schedulingClass){
 	ProcessControlBlock pcb;
 
-	// Initializes logical pid, priority, process state, and scheduling class
+	// Sets logical pid, timeCreated, and schedulingClass to argument values
 	pcb.simPid = simPid;
-	pcb.priority = 0;
-	pcb.state = NEW;
-	pcb.schedulingClass = NORMAL;
-
-	// Initializes times
-	pcb.totalCpuTime = zeroClock();
 	pcb.timeCreated = currentTime;
-	pcb.timeUsedDurringLastBurst = zeroClock();
+	pcb.schedulingClass = schedulingClass;
+	
+	// Initializes with default vlues
+	pcb.priority = 0;
+
 	pcb.timeOfLastBurst = zeroClock();
+
+	pcb.timeUsedDurringLastBurst = zeroClock();
+	pcb.totalCpuTime = zeroClock();
+
+	pcb.state = NEW;
 
 	pcb.previous = NULL;	// No previous block, not in queue yet
 
 	return pcb;
+}
+
+
+Clock pcbTimeLastExecuting(const ProcessControlBlock * pcb){
+	return clockSum(pcb->timeOfLastBurst, pcb->timeUsedDurringLastBurst);
+}
+
+
+Clock pcbTimeInSystem(const ProcessControlBlock * pcb, Clock currentTime){
+	return clockDiff(currentTime, pcb->timeCreated);
+}
+
+
+double pcbCpuUtilization(const ProcessControlBlock * pcb, Clock currentTime){
+	return clockRatio(pcb->totalCpuTime, pcbTimeInSystem(pcb, currentTime));
 }

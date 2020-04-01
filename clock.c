@@ -83,6 +83,40 @@ int clockCompare(const Clock clk1, const Clock clk2){
 	return 0;
 }
 
+// Returns the sum of two times
+Clock clockSum(Clock t1, Clock t2){
+	incrementClock(&t1, t2);
+	return t1;
+}
+
+// Returns the difference of two times (t1 - t2)
+Clock clockDiff(Clock t1, Clock t2){
+	t1.seconds -= t2.seconds;
+
+	t1.nanoseconds -= t2.nanoseconds;
+
+	if (t1.nanoseconds < 0){
+		t1.nanoseconds += BILLION;
+		t1.seconds -= 1;
+	}
+
+	return t1;
+}
+
+// Returns the ratio of two times (t1 / t2)
+long double clockRatio(Clock t1, Clock t2){
+	unsigned long long int t1TotalNano;
+	unsigned long long int t2TotalNano;
+
+	t1TotalNano = (unsigned long long)t1.seconds * BILLION + t1.nanoseconds;
+	t2TotalNano = (unsigned long long)t2.seconds * BILLION + t2.nanoseconds;
+
+	return (long double)t1TotalNano / (long double)t2TotalNano;
+}
+
+
+
+
 // Formats and prints the time on the clock to the file
 void printTime(FILE * fp, const Clock clock){
 	fprintf(fp,

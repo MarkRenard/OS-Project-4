@@ -7,6 +7,10 @@
 #include "queue.h"
 #include "pcb.h"
 
+const Clock WAIT_TIME_THRESHOLD = {PROMOTION_WAIT_TIME_THRESHOLD_SEC,
+				   PROMOTION_WAIT_TIME_THRESHOLD_NS};
+
+
 void initializeMultiQueue(MultiQueue * multiQ){
 	int i;
 	for (i = 0; i < NUM_QUEUE_LEVELS; i++){
@@ -67,8 +71,37 @@ void mEnqueue(MultiQueue * multiQ, ProcessControlBlock * pcb){
 }
 
 // Promotes processes in danger of starvation
-static void promoteSufficientlyAgedProcesses(MultiQueue * multiQ, Clock time){
-	// TODO
+static void promoteSufficientlyAgedProcesses(MultiQueue * multiQ, Clock now){
+	ProcessControlBlock * pcb;
+	Clock processWaitTime;
+	double cpuUtilization;
+
+	int i;
+	for (i = 1; i < NUM_QUEUE_LEVELS; i++){
+		pcb = multiQ->readyQueues[i].front; // Selects next queue head
+
+		// Skips empty queues
+		if (pcb == NULL) continue;
+	
+		// Computes process wait time
+		processWaitTime = clockDiff(now, pcbTimeLastExecuting(pcb));
+
+		// Computes cpu utilization
+		cpuUtilization = pcbCpuUtilization(pcb, now); 
+
+		// Determines whether to promote process
+		if (cpuUtilization < UTIL_THRESHOLD \
+		    &&(clockCompare(processWaitTime, WAIT_TIME_THRESHOLD) >=0)){
+		
+			// Increases process priority
+			pcb->priority--;
+
+			// Moves process control block to the next queue
+			dequeue(&multiQ->readyQueues[i]);
+			enqueue(&multiQ->readyQueues[i - 1], pcb);
+		}				
+
+	}
 }
 
 // Promotes aged processes and returns the PCB of the next process to schedule
