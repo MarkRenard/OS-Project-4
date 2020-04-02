@@ -21,7 +21,7 @@
 
 #define USER_PROG_PATH "./userProgram"	// The path to the user program
 
-#define REAL_TIME_PROBABILITY 0.05	// Probability new process is real time
+#define REAL_TIME_PROBABILITY 0.1	// Probability new process is real time
 
 #define LOOP_INCREMENT_SECONDS 1	// Seconds incremented each iterations
 #define MIN_LOOP_INCREMENT_NS 0		// Min nanosecond increment
@@ -29,7 +29,6 @@
 
 #define NUM_QUEUE_LEVELS 4		// Number of levels in multi-level queue
 #define BASE_QUANTUM 10000000		// Base time quantum in nanoseconds
-#define QUANTUM_FACTOR 2		// Divisor of base quantum per level
 
 #define MIN_SCHEDULING_TIME_NS 100	// Min nanoseconds to schedule a process
 #define MAX_SCHEDULING_TIME_NS 1000	// Max nanoseconds to schedule a process
@@ -37,12 +36,12 @@
 #define LOG_FILE_NAME "oss_log"		// The name of the output file
 
 #define MAX_TOTAL_GENERATED 100		// Max children launched by oss
-#define MAX_SECONDS 99999	 		// Max total execution time of oss
+#define MAX_SECONDS 99999	 	// Max total execution time of oss
 
 
 // Used by userProgram.c
 #define TERMINATION_PROBABILITY 0.3	// Chance of terminating within quantum
-#define BLOCK_PROBABILITY 0.1		// Chance of blocking within quantum
+#define BLOCK_OR_PREEMPT_PROBABILITY 0.1// Chance of preemption or blocking 
 
 #define MIN_WAIT_SEC 0			// Min seconds waiting if blocked
 #define MIN_WAIT_MS 0			// Min milliseconds waiting if blocked
@@ -52,7 +51,7 @@
 
 // Used by both oss.c and userProgram.c
 #define DISPATCH_MQ_KEY 59597192	// Message queue key for dispatch
-#define REPLY_MQ_KEY 38257848	// Message queue key for interrupts
+#define REPLY_MQ_KEY 38257848		// Message queue key for interrupts
 #define MQ_PERMS (S_IRUSR | S_IWUSR)	// Message queue permissions
 
 #define BASE_SEED 8853984		// Used in calls to srand
@@ -69,14 +68,18 @@
 #define BIT_VECTOR_SIZE (MAX_VALUE / NUM_BITS + 1) // Size of bit vector
 
 
-// Used by multiQueue.c to determine sufficient age for priority queue promotion
-#define PROMOTION_WAIT_TIME_THRESHOLD_NS 0 // Aging criterion for promotion ns
+// Used by multiQueue.c 
+#define PROMOTION_WAIT_TIME_THRESHOLD_NS 0 // Aging criterion for promotion sec
 #define PROMOTION_WAIT_TIME_THRESHOLD_SEC MAX_BLOCKS // Aging criterion seconds
 #define UTIL_THRESHOLD (1 / (long double) multiQ->count) // Cpu use criterion
+
+#define WAKE_UP_INCREMENT_SEC 0		// Blocked process wake-up seconds
+#define WAKE_UP_INCREMENT_NS 100	// Blocked process wake-up nanosecodns
 
 
 // Miscelaneous 
 #define BILLION 1000000000U		// The number of nanoseconds in a second
+#define MILLION 1000000U		// Number of nanoseconds per millisecond
 #define BUFF_SZ 100			// The size of character buffers 
 #define MSG_SZ 30			// Size of Message char arrays
 

@@ -15,13 +15,14 @@ ProcessControlBlock initialProcessControlBlock(int simPid, Clock currentTime,
 	pcb.timeCreated = currentTime;
 	pcb.schedulingClass = schedulingClass;
 	
-	// Initializes with default vlues
-	pcb.priority = 0;
+	// Initializes priority to 1 for normal, 0 for real-time
+	pcb.priority = schedulingClass == NORMAL ? 1 : 0;
 
+	// Clocks initialized to zero
 	pcb.timeOfLastBurst = zeroClock();
-
 	pcb.timeUsedDurringLastBurst = zeroClock();
 	pcb.totalCpuTime = zeroClock();
+	pcb.nextIoEventTime = zeroClock();
 
 	pcb.state = NEW;
 

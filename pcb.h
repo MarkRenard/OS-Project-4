@@ -9,7 +9,7 @@
 
 #include "clock.h"
 
-typedef enum ProcessState {NEW, READY, RUNNING, BLOCKED, EXIT} ProcessState;
+typedef enum ProcessState {NEW, READY, RUNNING, BLOCKED, PREEMPTED, EXIT} ProcessState;
 typedef enum SchedulingClass {NORMAL, REAL_TIME} SchedulingClass;
 
 typedef struct processControlBlock {
@@ -25,11 +25,12 @@ typedef struct processControlBlock {
 	// Updated at dispatch time
 	Clock timeOfLastBurst;		 // Time the last cpu burst started
 
-	// Updated at preemption time
+	// Updated at end of burst
 	Clock timeUsedDurringLastBurst;	 // Time passed durring last execution
 	Clock totalCpuTime;		 // Total simulated execution time
+	Clock nextIoEventTime;		 // Time of next I/O event
 
-	// Updated at dispatch and preemption time
+	// Updated at dispatch and end of burst
 	ProcessState state;		 // The simulated state of the process
 
 	// Link to the previous process control block in its queue

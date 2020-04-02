@@ -79,4 +79,14 @@ void logEnqueue(int simPid, int queueNum){
 	printLine(buff);
 }
 
+// Logs that a process is blocked until an I/O event at a particular time
+void logBlocking(int simPid, Clock nextIoEventTime){
+	char buff[BUFF_SZ];
+	sprintf(buff, "OSS: Process with PID %d is blocked until I/O event at"
+		" time %d : %d\n", simPid, nextIoEventTime.seconds, 
+		nextIoEventTime.nanoseconds);
+	printLine(buff);
+}
+
+
 

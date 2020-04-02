@@ -16,6 +16,7 @@
 #include "randomGen.h"
 
 static void terminateProcedure(char * msgText);
+static void blockProcedure(char * msgText, int r, int s);
 static void useEntireQuantumProcedure(char * msgText);
 static void createReplyMessage(char * msgText, char stateChar, int usedNano,
                                int r, int s);
@@ -56,18 +57,18 @@ int main(int argc, char * argv[]){
 			terminateProcedure(msgBuff);
 
 		// Determines whether process will get blocked or preempted
-		} /*else if (randomDouble(0, 1) < BLOCK_OR_PREEMPT_PROBABILITY){
+		} else if (randBinary(BLOCK_OR_PREEMPT_PROBABILITY)){
 			unsigned int r = randUnsigned(0, 3);
 			unsigned int s = randUnsigned(0, 1000);
 
-			if (r == 3){
+/*			if (r == 3){
 				preemptProcedure(msgBuff);
 			} else {
-				blockProcedure(msgBuff);
-			}
+*/				blockProcedure(msgBuff, r, s);
+		//	}
 
 		// Indicates that the process will not terminate within quantum
-		}*/ else {
+		} else {
 			// Adds one to quantum to indicate non-termination
 			useEntireQuantumProcedure(msgBuff);
 		}
@@ -97,7 +98,16 @@ static void useEntireQuantumProcedure(char * msgText){
 	createReplyMessage(msgText, USES_ALL_QUANTUM_CH, quantum, -1, -1);
 }
 
-// Changes msgText to use in the repy queue, char by char
+static void blockProcedure(char * msgText, int r, int s){
+	unsigned int usedNano;
+	unsigned int quantum = atoi(msgText);
+
+	usedNano = randUnsigned(0, quantum);
+
+	createReplyMessage(msgText, WAITING_FOR_IO_CH, usedNano, r, s);
+}
+
+// Changes msgText to use in the repy queue
 static void createReplyMessage(char * msgText, char stateChar, int usedNano, 
 			       int r, int s){
 	int i = 0;
@@ -117,8 +127,26 @@ static void createReplyMessage(char * msgText, char stateChar, int usedNano,
 
 	// Adds time of I/O event if blocking
 	if (stateChar == WAITING_FOR_IO_CH){
-		// TODO
-	}
+		char rBuff[BUFF_SZ];
+		char sBuff[BUFF_SZ];
 
+		// Converts ints to strings
+		sprintf(rBuff, "%d", r);
+		sprintf(sBuff, "%d", s);
+
+		// Copies r
+		int j = 0;
+		do {
+			msgText[i] = rBuff[j++];
+		} while (msgText[i++] != '\0');
+		msgText[i++] = DELIM;
+
+		// Copies s
+		j = 0;
+		do {
+			msgText[i] = sBuff[j++];
+		} while (msgText[i++] != '\0');
+		msgText[i++] = DELIM;
+	}
 }
 	

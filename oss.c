@@ -31,8 +31,9 @@
 static void launchUserProcesses(Clock *, ProcessControlBlock *);
 static void generateProcess(Clock, ProcessControlBlock *, MultiQueue *);
 static void launchProcess(int);
-static ProcessControlBlock * dispatchProcess(Clock, MultiQueue *);
-static unsigned int processMessage(const char*, ProcessControlBlock*, MultiQueue *);
+static ProcessControlBlock * dispatchProcess(Clock *, MultiQueue *);
+static unsigned int processMessage(const char *, ProcessControlBlock *, 
+				   MultiQueue *, Clock);
 void parseMessage(char *, unsigned int *, int *, int *, const char*);
 static void assignSignalHandlers();
 static void cleanUpAndExit(int param);
@@ -93,7 +94,7 @@ int main(int argc, char * argv[]){
 static void launchUserProcesses(Clock * systemClock,
 				ProcessControlBlock * processTable) {
 	char msgText[MSG_SZ];	   // Message text from last dispatched process
-	unsigned int execTime;	   // Nanoseconds used by last dispatched process
+	unsigned int nano;	   // Nanoseconds used by last process & enqueue
 	ProcessControlBlock * pcb; // PCB of last dispatched process
 	
 	int totalGenerated = 0;	   // Total processes generated
@@ -126,25 +127,29 @@ static void launchUserProcesses(Clock * systemClock,
 						  maxTimeBetweenNewProcs));
 		}
 
+		// Checks and wakes up blocked processes, increments systemClock
+		if (q.blockedCount > 0) 
+			checkBlockedProcesses(&q, systemClock);
+
 		// Schedules/dispatches a process from queue, if non-empty
-		if (q.count > 0){
+		if (q.readyCount > 0){
+
+			pcb = dispatchProcess(systemClock, &q);
 
 			// Adds simulated time taken by scheduling
 			incrementClock(systemClock, 
 				       randomTime(MIN_SCHEDULING_TIME,
 						  MAX_SCHEDULING_TIME));
 			
-			// Dispatches a process from the queue
-			pcb = dispatchProcess(*systemClock, &q);
 
 			// Waits for message from dispatched process
 			waitForMessage(interruptMqId, msgText, pcb->simPid + 1);
 		
 			// Records time & re-queues process or logs termination
-			execTime = processMessage(msgText, pcb, &q);
+			nano = processMessage(msgText, pcb, &q, *systemClock);
 
-			// Adds execution time to the system clock
-			incrementClock(systemClock, newClock(0, execTime));
+			// Adds execution time and enqueueing overhead to clock
+			incrementClock(systemClock, newClock(0, nano));
 		}
 
 		// Increments system clock
@@ -173,11 +178,11 @@ static void generateProcess(Clock time, ProcessControlBlock * processTable,
 	// Initializes the process control block for the new process
 	processTable[newPid] = initialProcessControlBlock(newPid, time, class);
 
-	// Logs process generation
-	logGeneration(newPid, processTable[newPid].priority, time);
-
 	// Adds the new process control block to the queue
 	mEnqueue(queue, &processTable[newPid]);
+
+	// Logs process generation
+	logGeneration(newPid, processTable[newPid].priority, time);
 
 #ifdef DEBUG
 	fprintf(stderr, "About to launch process %d\n", newPid);
@@ -214,15 +219,17 @@ static void launchProcess(int simPid){
 }
 
 // Dequeues a PCB, changes state to running, and messages process with quantum
-static ProcessControlBlock * dispatchProcess(Clock currentTime, MultiQueue * q){
+static ProcessControlBlock * dispatchProcess(Clock * systemClock, MultiQueue * q){
 	ProcessControlBlock * pcb; // PCB of dispatched process
 	char msgText[MSG_SZ];      // Buffer of message to add to message queue
 
 	// Selects a process control block from the multi-level feedback queue
-	pcb = mDequeue(q, currentTime);
+	if (q->readyCount > 0)
+		pcb = mDequeue(q, *systemClock);
+	else
+		perrorExit("Called dispatchProcess with no ready processes");
 
-	// Updates pcb values
-	pcb->timeOfLastBurst = currentTime;
+	pcb->timeOfLastBurst = *systemClock;
 	pcb->state = RUNNING;
 
 	// Messages running process with time quantum
@@ -230,7 +237,7 @@ static ProcessControlBlock * dispatchProcess(Clock currentTime, MultiQueue * q){
 	sendMessage(dispatchMqId, msgText, pcb->simPid + 1);
 
 	// Logs dispatch
-	logDispatch(pcb->simPid, pcb->priority, currentTime); 
+	logDispatch(pcb->simPid, pcb->priority, *systemClock); 
 
 	// Returns process control block of dispatched process
 	return pcb;
@@ -238,8 +245,7 @@ static ProcessControlBlock * dispatchProcess(Clock currentTime, MultiQueue * q){
 
 // Records msg from user process, re-enqueues or removes pcb
 static unsigned int processMessage(const char * msg, ProcessControlBlock * pcb,
-				   MultiQueue * q){
-	// Used to store values encoded in message
+				   MultiQueue * q, Clock currentTime){
 	char stateChar;		// Indicates one of four results of the burst
 	unsigned int usedNano;	// Number of nanoseconds used by process
 	int r;			// Seconds until an I/O event, if any
@@ -250,30 +256,47 @@ static unsigned int processMessage(const char * msg, ProcessControlBlock * pcb,
 	// Writes a line to the log indicating pid and burst time
 	logMessageReciept(pcb->simPid, usedNano);
 
-	// Re-enqueues pcb if entire quantum was used
-	if (stateChar == USES_ALL_QUANTUM_CH){
-
-		// Updates state
-		pcb->state = READY;
-
-		// Updates time figures in pcb
-		Clock usedNanoClock = newClock(0, usedNano);
-		pcb->timeUsedDurringLastBurst = usedNanoClock;
-		incrementClock(&pcb->totalCpuTime, usedNanoClock);
-
-		mEnqueue(q, pcb);
-
-		// Logs the simPid and queue number of re-enqueued pcb
-		logEnqueue(pcb->simPid, pcb->priority);
+	// Updates time figures in pcb
+	Clock usedNanoClock = newClock(0, usedNano);
+	pcb->timeUsedDurringLastBurst = usedNanoClock;
+	incrementClock(&pcb->totalCpuTime, usedNanoClock);
 
 	// If process terminted, changes state to exit, waits, and frees simPid
-	} else if (stateChar == TERMINATION_CH){
+	if (stateChar == TERMINATION_CH){
 		pcb->state = EXIT;
 		wait(NULL);
 		freeInBitVector(pcb->simPid);
 
 		// Writes a line to the log indicating termination
 		logPartialQuantumUse();
+
+
+	// Re-enqueues pcb if entire quantum was used
+	} else if (stateChar == USES_ALL_QUANTUM_CH){
+
+		// Updates state
+		pcb->state = READY;
+
+		mEnqueue(q, pcb);
+
+		// Logs the simPid and queue number of re-enqueued pcb
+		logEnqueue(pcb->simPid, pcb->priority);
+
+
+	} else if (stateChar == WAITING_FOR_IO_CH){
+		
+		// Updates state
+		pcb->state = BLOCKED;
+
+		// Records the time of the next I/O event
+		pcb->nextIoEventTime = clockSum(currentTime, 
+						newClock(r, s * MILLION));
+
+		mEnqueue(q, pcb);
+
+		// Logs blocking event
+		logBlocking(pcb->simPid, pcb->nextIoEventTime);
+
 	}
 
 	return usedNano;
@@ -282,23 +305,43 @@ static unsigned int processMessage(const char * msg, ProcessControlBlock * pcb,
 // Parses a message received from child process
 void parseMessage(char * stateChar, unsigned int * usedNano, int * r, int * s,
 		  const char * msg){
-	int i = 0;
+	int j, i = 0;
 
 	// Gets state char
 	*stateChar = msg[i];
 	i += 2;
 
 	// Gets usedNano
+	j = 0;
 	char usedNanoBuff[BUFF_SZ];
 	do{
-		usedNanoBuff[i] = msg[i];
-	} while (usedNanoBuff[i++] != '\0');
+		usedNanoBuff[j] = msg[i++];
+	} while (usedNanoBuff[j++] != '\0');
 	i++; 					// Skips over DELIM
 	*usedNano = atoi(usedNanoBuff);		// Converts to int
 
 	// Gets r and s if state char indicates I/O event
 	if (*stateChar == WAITING_FOR_IO_CH){
-		//TODO
+		char rBuff[BUFF_SZ];
+		char sBuff[BUFF_SZ];
+
+                // Copies r
+                j = 0;
+                do {
+                        rBuff[j] = msg[i++];
+                } while (rBuff[j++] != '\0');
+		i++;
+
+                // Copies s
+                j = 0;
+                do {
+                        sBuff[j] = msg[i++];
+                } while (sBuff[j++] != '\0');
+                i++;
+
+		// Converst to ints
+		*r = atoi(rBuff);
+		*s = atoi(sBuff);
 	}
 }
 

@@ -13,6 +13,7 @@ typedef struct Queue {
 } Queue;
 
 void printQueue(FILE *, const Queue *);
+void addToFront(Queue * q, ProcessControlBlock * pcb);
 void initializeQueue(Queue *);
 void enqueue(Queue *, ProcessControlBlock *);
 ProcessControlBlock * dequeue(Queue *);

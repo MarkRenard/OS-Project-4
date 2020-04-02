@@ -6,6 +6,8 @@
 #ifndef LOGGING_H
 #define LOGGING_H
 
+#include "clock.h"
+
 // Logs the generation and enqueueing of a new process
 void logGeneration(int simPid, int queueNum, Clock time);
 
@@ -23,5 +25,7 @@ void logPartialQuantumUse();
 
 // Logs the enqueueing of a process control block
 void logEnqueue(int simPid, int queueNum);
+
+void logBlocking(int simPid, Clock nextIoEventTime);
 
 #endif

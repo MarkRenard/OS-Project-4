@@ -24,6 +24,13 @@ void printQueue(FILE * fp, const Queue * q){
 	}
 }
 
+// Adds a process control block to the front of the queue
+void addToFront(Queue * q, ProcessControlBlock * pcb){
+	pcb->previous = q->front;
+	q->front = pcb;
+	q->count++;
+}
+
 // Adds a process control block to the back of the queue
 void enqueue(Queue * q, ProcessControlBlock * pcb){
 #ifdef DEBUG_Q
@@ -77,4 +84,5 @@ ProcessControlBlock * dequeue(Queue * q){
 
 
 }
+
 
