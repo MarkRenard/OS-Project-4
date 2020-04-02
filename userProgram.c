@@ -17,6 +17,7 @@
 
 static void terminateProcedure(char * msgText);
 static void blockProcedure(char * msgText, int r, int s);
+static void preemptProcedure(char * msgText);
 static void useEntireQuantumProcedure(char * msgText);
 static void createReplyMessage(char * msgText, char stateChar, int usedNano,
                                int r, int s);
@@ -61,15 +62,15 @@ int main(int argc, char * argv[]){
 			unsigned int r = randUnsigned(0, 3);
 			unsigned int s = randUnsigned(0, 1000);
 
-/*			if (r == 3){
+			if (r == 3){
 				preemptProcedure(msgBuff);
 			} else {
-*/				blockProcedure(msgBuff, r, s);
-		//	}
+				blockProcedure(msgBuff, r, s);
+			}
 
 		// Indicates that the process will not terminate within quantum
 		} else {
-			// Adds one to quantum to indicate non-termination
+			// Creates message indicating non-termination
 			useEntireQuantumProcedure(msgBuff);
 		}
 
@@ -98,6 +99,17 @@ static void useEntireQuantumProcedure(char * msgText){
 	createReplyMessage(msgText, USES_ALL_QUANTUM_CH, quantum, -1, -1);
 }
 
+// Changes msgText indicating the process has been prempted
+static void preemptProcedure(char * msgText){
+	unsigned int quantum = atoi(msgText);
+	unsigned int usedNano;
+
+	usedNano = quantum * randUnsigned(1, 99) / 100;
+
+	createReplyMessage(msgText, PREEMPT_CH, usedNano, -1, -1);
+}
+
+// Changes msgText indicating the process is blocking, waiting for I/O
 static void blockProcedure(char * msgText, int r, int s){
 	unsigned int usedNano;
 	unsigned int quantum = atoi(msgText);

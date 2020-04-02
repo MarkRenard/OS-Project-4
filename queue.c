@@ -28,7 +28,11 @@ void printQueue(FILE * fp, const Queue * q){
 void addToFront(Queue * q, ProcessControlBlock * pcb){
 	pcb->previous = q->front;
 	q->front = pcb;
+
+	// Adds to back as well if previously empty
+	if (q->back == NULL) q->back = pcb;
 	q->count++;
+	
 }
 
 // Adds a process control block to the back of the queue

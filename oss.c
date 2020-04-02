@@ -270,7 +270,6 @@ static unsigned int processMessage(const char * msg, ProcessControlBlock * pcb,
 		// Writes a line to the log indicating termination
 		logPartialQuantumUse();
 
-
 	// Re-enqueues pcb if entire quantum was used
 	} else if (stateChar == USES_ALL_QUANTUM_CH){
 
@@ -282,7 +281,7 @@ static unsigned int processMessage(const char * msg, ProcessControlBlock * pcb,
 		// Logs the simPid and queue number of re-enqueued pcb
 		logEnqueue(pcb->simPid, pcb->priority);
 
-
+	// Adds process to blocked queue, records the time of the I/O event
 	} else if (stateChar == WAITING_FOR_IO_CH){
 		
 		// Updates state
@@ -291,12 +290,22 @@ static unsigned int processMessage(const char * msg, ProcessControlBlock * pcb,
 		// Records the time of the next I/O event
 		pcb->nextIoEventTime = clockSum(currentTime, 
 						newClock(r, s * MILLION));
-
+		// Adds to blocked queue in multi-queue
 		mEnqueue(q, pcb);
 
 		// Logs blocking event
 		logBlocking(pcb->simPid, pcb->nextIoEventTime);
 
+	// Adds the prempted process to the head of its queue
+	} else if (stateChar == PREEMPT_CH){
+		// Updates state
+		pcb->state = PREEMPTED;
+
+		// Adds preempted pcb to multi-queue
+		mAddPreempted(q, pcb);
+
+		// Logs preemption event
+		logPreemption(pcb->simPid, pcb->priority, currentTime);
 	}
 
 	return usedNano;

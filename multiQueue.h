@@ -25,5 +25,6 @@ void initializeMultiQueue(MultiQueue * multiQ);
 void checkBlockedProcesses(MultiQueue * multiQ, Clock * now);
 void mEnqueue(MultiQueue * multiQ, ProcessControlBlock * pcb);
 ProcessControlBlock * mDequeue(MultiQueue * multiQ, Clock currentTime);
+void mAddPreempted(MultiQueue *, ProcessControlBlock *);
 
 #endif

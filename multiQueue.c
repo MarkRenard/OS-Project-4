@@ -7,6 +7,8 @@
 #include "queue.h"
 #include "pcb.h"
 #include "perrorExit.h"
+#include "logging.h"
+
 #include <unistd.h>
 
 // Used for determining whether a process priority should be promoted due to age
@@ -85,29 +87,15 @@ void mAddToBlockedQueue(Queue * blockedQueue, ProcessControlBlock * pcb){
 
 // Re-enqueues blocked processes if I/O happened, returns simulated overhead
 void checkBlockedProcesses(MultiQueue * multiQ, Clock * now){
-
-	// Gets the address of the front of the queue
 	struct processControlBlock * pcb; 
 	
-#ifdef DEBUG_Q
-	fprintf(stderr, "\nChecking blocked processes\n");
-#endif
 	// Traverses blocked queue until the end or I/O event is in the future
 	while((pcb = multiQ->blockedQueue.front) != NULL
 	      && clockCompare(pcb->nextIoEventTime, *now) <= 0){
-			
+		
+	
 		// Wakes up and adds to appropriate queue
 		pcb = dequeue(&multiQ->blockedQueue);
-#ifdef DEBUG_Q
-		fprintf(stderr, "Waking up process %d\n", pcb->simPid);
-		fprintf(stderr, "Now: ");
-		printTimeln(stderr, *now);
-		fprintf(stderr, "Event: ");
-		printTimeln(stderr, pcb->nextIoEventTime);
-		fprintf(stderr, "\n");
-
-		sleep(1);
-#endif
 		pcb->state = READY;
 		enqueue(&multiQ->readyQueues[pcb->priority], pcb);
 
@@ -118,6 +106,8 @@ void checkBlockedProcesses(MultiQueue * multiQ, Clock * now){
 		// Adds simulated time
 		incrementClock(now, WAKE_UP_INCREMENT);
 
+		// Logs wake-up
+		logWakeUp(pcb->simPid, pcb->priority, *now);
 	}
 }
 
@@ -214,5 +204,20 @@ ProcessControlBlock * mDequeue(MultiQueue * multiQ, Clock currentTime){
 	return dequeue(&multiQ->readyQueues[i]); 
 }
 
+// Adds process to head of its queue
+void mAddPreempted(MultiQueue * multiQ, ProcessControlBlock * pcb){
+	// Returns to the head of the queue
+	addToFront(&multiQ->readyQueues[pcb->priority], pcb);
+	pcb->state = READY;
 
+	// Updates counts
+	multiQ->count++;
+	multiQ->readyCount++;
+
+	
+#ifdef DEBUG_Q
+	fprintf(stderr, "mAddPreempted - adding to front\n");
+	printMultiQueue(stderr, multiQ);
+#endif
+}		
 

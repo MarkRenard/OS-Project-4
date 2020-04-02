@@ -28,4 +28,8 @@ void logEnqueue(int simPid, int queueNum);
 
 void logBlocking(int simPid, Clock nextIoEventTime);
 
+void logPreemption(int simPid, int queueNum, Clock currentTime);
+
+void logWakeUp(int simPid, int queueNum, Clock time);
+
 #endif

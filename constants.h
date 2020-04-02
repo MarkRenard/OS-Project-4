@@ -41,7 +41,7 @@
 
 // Used by userProgram.c
 #define TERMINATION_PROBABILITY 0.3	// Chance of terminating within quantum
-#define BLOCK_OR_PREEMPT_PROBABILITY 0.1// Chance of preemption or blocking 
+#define BLOCK_OR_PREEMPT_PROBABILITY 0.5// Chance of preemption or blocking 
 
 #define MIN_WAIT_SEC 0			// Min seconds waiting if blocked
 #define MIN_WAIT_MS 0			// Min milliseconds waiting if blocked

@@ -82,11 +82,29 @@ void logEnqueue(int simPid, int queueNum){
 // Logs that a process is blocked until an I/O event at a particular time
 void logBlocking(int simPid, Clock nextIoEventTime){
 	char buff[BUFF_SZ];
-	sprintf(buff, "OSS: Process with PID %d is blocked until I/O event at"
-		" time %d : %d\n", simPid, nextIoEventTime.seconds, 
+	sprintf(buff, "OSS: Process with PID %d is BLOCKED, waiting for I/O"
+		" until time %d : %d\n", simPid, nextIoEventTime.seconds, 
 		nextIoEventTime.nanoseconds);
 	printLine(buff);
 }
 
+// Logs that a process has been preempted at a given time
+void logPreemption(int simPid, int queueNum, Clock currentTime){
+	char buff[BUFF_SZ];
+	sprintf(buff, "OSS: Process with PID %d is PREEMPTED, added to the"
+		" head of queue %d at time %03u : %09u\n", simPid, queueNum,
+		currentTime.seconds, currentTime.nanoseconds);
+	printLine(buff);
+}
 
+// Logs that a process has been moved from the blocked queue to a ready queue
+void logWakeUp(int simPid, int queueNum, Clock time){
+	char buff[BUFF_SZ];
+	lines++; 	// Accounts for extra new line character
+	
+	sprintf(buff, "\nOSS: Process with PID %d has been moved from the"
+		" blocked queue to queue %d at %03u : %09u\n", simPid,
+		queueNum, time.seconds, time.nanoseconds);
+	printLine(buff);
 
+}
