@@ -1,0 +1,33 @@
+  Assignment 4 - Mark Renard
+
+This project simulates an operating system's time-based process scheduler. It
+forking children at random simulated times, scheduling and dispatching them
+using a multi-level feedback queue and a message queue. Its activity is logged
+in the file oss_log.
+
+The following aging algorithm is used to prevent starvation. For each process
+with a block at the head of a queue, if both its CPU utilization and time
+spent waiting since its last CPU burst are above thresholds defined in
+constants.h, it is promoted to the queue one priority level higher. This
+algorithm is implemented in the function promoteSufficientlyAgedProcesses
+in the file multiQueue.c. It is called each time a Process Control Block
+is dequeued from the MultiQueue using mDequeue.
+
+This project includes small test programs, bvTest and clockTest, that test
+functions defined in bitVector.c and clock.c, respectively. They can be
+compiled using the commands:
+
+	make bvTest; make clockTest
+
+I found it useful to visualize what the program was doing to the multi-queue
+by printing a representation to stderr. This can be enabled with:
+
+	make DEBUG=-DDEBUG_Q 
+
+Project-specific named constants are in one convenient location,
+constants.h, for easy modification. sharedMemory.c and perrorExit.c make using
+shared memory and printing error messages easier.
+
+Admittedly, I had some issues gathering statistics to display at the end of
+the log file that aren't obviously grossly inaccurate. Bad data can be worse
+than no data, so that feature is omitted.
