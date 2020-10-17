@@ -1,7 +1,7 @@
   Assignment 4 - Mark Renard
 
 This project simulates an operating system's time-based process scheduler. It
-forking children at random simulated times, scheduling and dispatching them
+forks children at random simulated times, scheduling and dispatching them
 using a multi-level feedback queue and a message queue. Its activity is logged
 in the file oss_log.
 
